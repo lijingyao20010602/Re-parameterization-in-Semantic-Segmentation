@@ -52,7 +52,7 @@ class RepConv(nn.Module):
 
         if deploy:
             self.rbr_reparam = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride,
-                                      padding=padding, dilation=dilation, groups=groups, bias=bias, padding_mode=padding_mode)
+                                      padding=padding, dilation=dilation, groups=groups, bias=True, padding_mode=padding_mode)
 
         else:
             self.rbr_identity = nn.BatchNorm2d(num_features=in_channels) if out_channels == in_channels and stride == 1 else None
@@ -199,8 +199,8 @@ class _PSPModule(nn.Module):
 
 
 class RepPSP(BaseModel):
-    def __init__(self, num_classes, in_channels=3, backbone='resnet152', pretrained=True, use_aux=True, 
-                freeze_bn=False, freeze_backbone=False, deploy=False, use_se=False):
+    def __init__(self, num_classes, deploy, in_channels=3, backbone='resnet152', pretrained=True, use_aux=True, 
+                freeze_bn=False, freeze_backbone=False, use_se=False):
         super(RepPSP, self).__init__()
         norm_layer = nn.BatchNorm2d
         model = getattr(resnet, backbone)(pretrained, norm_layer=norm_layer)

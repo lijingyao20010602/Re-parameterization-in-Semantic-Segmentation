@@ -6,7 +6,7 @@ import torch
 import datetime
 from torch.utils import tensorboard
 from utils import helpers
-from utils import logger
+from utils import setup_logger
 import utils.lr_scheduler
 from utils.sync_batchnorm import convert_model
 from utils.sync_batchnorm import DataParallelWithCallback
@@ -16,17 +16,33 @@ def get_instance(module, name, config, *args):
     return getattr(module, config[name]['type'])(*args, **config[name]['args'])
 
 class BaseTrainer:
-    def __init__(self, model, loss, resume, config, train_loader, val_loader=None, train_logger=None):
+    def __init__(self, model, loss, resume, config, train_loader, val_loader=None, train_logger=None, logger=None):
         self.model = model
         self.loss = loss
         self.config = config
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.train_logger = train_logger
-        self.logger = logging.getLogger(self.__class__.__name__)
         self.do_validation = self.config['trainer']['val']
         self.start_epoch = 1
         self.improved = False
+
+        # CONFIGS
+        cfg_trainer = self.config['trainer']
+        self.epochs = cfg_trainer['epochs']
+        self.save_period = cfg_trainer['save_period']
+
+        # CHECKPOINTS & TENSOBOARD
+        start_time = datetime.datetime.now().strftime('%m-%d_%H-%M')
+        self.checkpoint_dir = os.path.join(cfg_trainer['save_dir'], self.config['name'], start_time)
+        helpers.dir_exists(self.checkpoint_dir)
+        config_save_path = os.path.join(self.checkpoint_dir, 'config.json')
+        with open(config_save_path, 'w') as handle:
+            json.dump(self.config, handle, indent=4, sort_keys=True)
+        
+        self.logger = logger if logger else setup_logger(output=self.checkpoint_dir) 
+        writer_dir = os.path.join(cfg_trainer['log_dir'], self.config['name'], start_time)
+        self.writer = tensorboard.SummaryWriter(writer_dir)
 
         # SETTING THE DEVICE
         self.device, availble_gpus = self._get_available_devices(self.config['n_gpu'])
@@ -36,11 +52,6 @@ class BaseTrainer:
         else:
             self.model = torch.nn.DataParallel(self.model, device_ids=availble_gpus)
         self.model.to(self.device)
-
-        # CONFIGS
-        cfg_trainer = self.config['trainer']
-        self.epochs = cfg_trainer['epochs']
-        self.save_period = cfg_trainer['save_period']
 
         # OPTIMIZER
         if self.config['optimizer']['differential_lr']:
@@ -67,17 +78,6 @@ class BaseTrainer:
             assert self.mnt_mode in ['min', 'max']
             self.mnt_best = -math.inf if self.mnt_mode == 'max' else math.inf
             self.early_stoping = cfg_trainer.get('early_stop', math.inf)
-
-        # CHECKPOINTS & TENSOBOARD
-        start_time = datetime.datetime.now().strftime('%m-%d_%H-%M')
-        self.checkpoint_dir = os.path.join(cfg_trainer['save_dir'], self.config['name'], start_time)
-        helpers.dir_exists(self.checkpoint_dir)
-        config_save_path = os.path.join(self.checkpoint_dir, 'config.json')
-        with open(config_save_path, 'w') as handle:
-            json.dump(self.config, handle, indent=4, sort_keys=True)
-
-        writer_dir = os.path.join(cfg_trainer['log_dir'], self.config['name'], start_time)
-        self.writer = tensorboard.SummaryWriter(writer_dir)
 
         if resume: self._resume_checkpoint(resume)
 
@@ -139,31 +139,32 @@ class BaseTrainer:
     
     def test(self):
         # RUN  VAL
-        results = self._valid_epoch(epoch)
+        results = self._valid_epoch(0)
 
         # LOGGING INFO
-        self.logger.info(f'\n         ## Info for epoch {epoch} ## ')
+        self.logger.info(f'\n         ## TEST ')
         for k, v in results.items():
             self.logger.info(f'         {str(k):15s}: {v}')
 
 
     def _save_checkpoint(self, epoch, save_best=False):
+        arch = type(self.model).__name__
         state = {
-            'arch': type(self.model).__name__,
+            'arch': arch,
             'epoch': epoch,
             'state_dict': self.model.state_dict(),
             'optimizer': self.optimizer.state_dict(),
             'monitor_best': self.mnt_best,
             'config': self.config
         }
-        filename = os.path.join(self.checkpoint_dir, f'checkpoint-epoch{epoch}.pth')
-        self.logger.info(f'\nSaving a checkpoint: {filename} ...') 
+        filename = os.path.join(self.checkpoint_dir, f'arch-train-checkpoint.pth')
+        self.logger.info(f'\nSaving checkpoint {epoch}') 
         torch.save(state, filename)
 
         if save_best:
-            filename = os.path.join(self.checkpoint_dir, f'best_model.pth')
+            filename = os.path.join(self.checkpoint_dir, f'arch-train.pth')
             torch.save(state, filename)
-            self.logger.info("Saving current best: best_model.pth")
+            self.logger.info("Saving current best")
 
 
     def _resume_checkpoint(self, resume_path):

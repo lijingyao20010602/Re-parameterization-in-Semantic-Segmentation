@@ -4,10 +4,7 @@ import argparse
 import torch
 import dataloaders
 import models
-import inspect
-import math
-from utils import losses
-from utils import Logger
+from utils import losses, setup_logger
 from utils.torchsummary import summary
 from trainer import Trainer
 
@@ -15,48 +12,59 @@ def get_instance(module, name, config, *args):
     # GET THE CORRESPONDING CLASS / FCT 
     return getattr(module, config[name]['type'])(*args, **config[name]['args'])
 
-def main(config, model_path, resume=None):
-    train_logger = Logger()
-
+def test(args, deploy, logger):
     # DATA LOADERS
-    train_loader = get_instance(dataloaders, 'train_loader', config)
-    val_loader = get_instance(dataloaders, 'val_loader', config)
+    type = 'deploy' if deploy else 'train'
+    model_path = os.path.join(args.path,'{}-{}.pth'.format(args.arch, type)) 
+
+    train_loader = get_instance(dataloaders, 'train_loader', args.config)
+    val_loader = get_instance(dataloaders, 'val_loader', args.config)
 
     # MODEL
-    model = get_instance(models, 'arch', config, train_loader.dataset.num_classes)
-    model.load_state_dict(torch.load(model_path)['state_dict'])
-    print(f'\n{model}\n')
+    test_model = get_instance(models, 'arch', args.config, train_loader.dataset.num_classes, deploy)
+    # print(test_model)
+    if os.path.isfile(model_path):
+        print("=> loading checkpoint '{}'".format(model_path))
+        checkpoint = torch.load(model_path)
+        if 'state_dict' in checkpoint:
+            checkpoint = checkpoint['state_dict']
+        elif 'model' in checkpoint:
+            checkpoint = checkpoint['model']
+        ckpt = {k.replace('module.', ''): v for k, v in checkpoint.items()}  # strip the names
+        # print(ckpt.keys())
+        test_model.load_state_dict(ckpt)
+    else:
+        print("=> no checkpoint found at '{}'".format(model_path))
 
     # LOSS
-    loss = getattr(losses, config['loss'])(ignore_index = config['ignore_index'])
+    loss = getattr(losses, args.config['loss'])(ignore_index=args.config['ignore_index'])
 
     # TRAINING
     trainer = Trainer(
-        model=model,
+        model=test_model,
         loss=loss,
-        resume=resume,
-        config=config,
+        resume=None,
+        config=args.config,
         train_loader=train_loader,
         val_loader=val_loader,
-        train_logger=train_logger)
+        logger=logger)
 
     trainer.test()
 
+
 if __name__=='__main__':
-    # PARSE THE ARGS
     parser = argparse.ArgumentParser(description='PyTorch Training')
-    parser.add_argument('-c', '--config', default='config.json',type=str,
-                        help='Path to the config file (default: config.json)')
-    parser.add_argument('-p', '--model-path', default=None,type=str,
-                        help='Path to the pth file')
-    parser.add_argument('-d', '--device', default=None, type=str,
-                           help='indices of GPUs to enable (default: all)')
+    parser.add_argument('-p', '--path', metavar='PATH', help='path to the weights file')
+    parser.add_argument('-a', '--arch', metavar='ARCH', default='RepPSP')
     args = parser.parse_args()
 
-    config_path = os.path.join(args.model_path.split('/')[:-1], args.config)
-    config = json.load(open(config_path))
+    logger = setup_logger(name='Test', output=args.path)
+    config_path = os.path.join(args.path,'config.json')
+    args.config = json.load(open(config_path))
+
+    logger.info('===============train================')
+    test(args, deploy=False, logger=logger)
+    logger.info('===============deploy================')
+    test(args, deploy=True, logger=logger)
     
-    if args.device:
-        os.environ["CUDA_VISIBLE_DEVICES"] = args.device
-    
-    main(config, args.model_path)
+

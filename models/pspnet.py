@@ -105,6 +105,13 @@ class PSPNet(BaseModel):
             if isinstance(module, nn.BatchNorm2d): module.eval()
 
 
+
+
+
+
+
+
+
 ## PSP with dense net as the backbone
 
 class PSPDenseNet(BaseModel):

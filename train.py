@@ -7,7 +7,7 @@ import models
 import inspect
 import math
 from utils import losses
-from utils import Logger
+from utils import setup_logger
 from utils.torchsummary import summary
 from trainer import Trainer
 
@@ -16,14 +16,16 @@ def get_instance(module, name, config, *args):
     return getattr(module, config[name]['type'])(*args, **config[name]['args'])
 
 def main(config, resume):
-    train_logger = Logger()
 
     # DATA LOADERS
     train_loader = get_instance(dataloaders, 'train_loader', config)
     val_loader = get_instance(dataloaders, 'val_loader', config)
 
     # MODEL
-    model = get_instance(models, 'arch', config, train_loader.dataset.num_classes)
+    if config['arch']['type'].startswith('Rep'):
+        model = get_instance(models, 'arch', config, train_loader.dataset.num_classes, deploy=False)
+    else:
+        model = get_instance(models, 'arch', config, train_loader.dataset.num_classes)
     print(f'\n{model}\n')
 
     # LOSS
@@ -36,8 +38,7 @@ def main(config, resume):
         resume=resume,
         config=config,
         train_loader=train_loader,
-        val_loader=val_loader,
-        train_logger=train_logger)
+        val_loader=val_loader)
 
     trainer.train()
 

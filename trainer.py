@@ -10,8 +10,8 @@ from utils.metrics import eval_metrics, AverageMeter
 from tqdm import tqdm
 
 class Trainer(BaseTrainer):
-    def __init__(self, model, loss, resume, config, train_loader, val_loader=None, train_logger=None, prefetch=True):
-        super(Trainer, self).__init__(model, loss, resume, config, train_loader, val_loader, train_logger)
+    def __init__(self, model, loss, resume, config, train_loader, val_loader=None, train_logger=None, prefetch=True, logger=None):
+        super(Trainer, self).__init__(model, loss, resume, config, train_loader, val_loader, train_logger, logger)
         
         self.wrt_mode, self.wrt_step = 'train_', 0
         self.log_step = config['trainer'].get('log_per_iter', int(np.sqrt(self.train_loader.batch_size)))
