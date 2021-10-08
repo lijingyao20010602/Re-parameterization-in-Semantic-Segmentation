@@ -7,6 +7,23 @@ from torchvision import models
 from base import BaseModel
 from utils.helpers import initialize_weights, set_trainable
 from itertools import chain
+import numpy as np
+
+class SEBlock(nn.Module):
+    def __init__(self, input_channels, internal_neurons):
+        super(SEBlock, self).__init__()
+        self.down = nn.Conv2d(in_channels=input_channels, out_channels=internal_neurons, kernel_size=1, stride=1, bias=True)
+        self.up = nn.Conv2d(in_channels=internal_neurons, out_channels=input_channels, kernel_size=1, stride=1, bias=True)
+        self.input_channels = input_channels
+
+    def forward(self, inputs):
+        x = F.avg_pool2d(inputs, kernel_size=inputs.size(3))
+        x = self.down(x)
+        x = F.relu(x)
+        x = self.up(x)
+        x = torch.sigmoid(x)
+        x = x.view(-1, self.input_channels, 1, 1)
+        return inputs * x
 
 
 def conv_bn(in_channels, out_channels, kernel_size, stride, padding, groups=1):
@@ -18,7 +35,7 @@ def conv_bn(in_channels, out_channels, kernel_size, stride, padding, groups=1):
 
 
 class RepConv(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size,
+    def __init__(self, in_channels, out_channels, kernel_size, bias=True,
                  stride=1, padding=0, dilation=1, groups=1, padding_mode='zeros', deploy=False, use_se=False):
         super(RepConv, self).__init__()
         self.deploy = deploy
@@ -35,28 +52,13 @@ class RepConv(nn.Module):
 
         if deploy:
             self.rbr_reparam = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride,
-                                      padding=padding, dilation=dilation, groups=groups, bias=True, padding_mode=padding_mode)
+                                      padding=padding, dilation=dilation, groups=groups, bias=bias, padding_mode=padding_mode)
 
         else:
             self.rbr_identity = nn.BatchNorm2d(num_features=in_channels) if out_channels == in_channels and stride == 1 else None
             self.rbr_dense = conv_bn(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride, padding=padding, groups=groups)
             self.rbr_1x1 = conv_bn(in_channels=in_channels, out_channels=out_channels, kernel_size=1, stride=stride, padding=padding_11, groups=groups)
             print('RepConv, identity = ', self.rbr_identity)
-
-        self._initialize_weights()
-
-
-    def _initialize_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                m.weight.data.zero_()
-                if m.bias is not None:
-                    m.bias.data.zero_()
-            if isinstance(m, nn.ConvTranspose2d):
-                assert m.kernel_size[0] == m.kernel_size[1]
-                initial_weight = get_upsampling_weight(
-                    m.in_channels, m.out_channels, m.kernel_size[0])
-                m.weight.data.copy_(initial_weight)
 
 
     def forward(self, inputs):
@@ -67,7 +69,7 @@ class RepConv(nn.Module):
             id_out = 0
         else:
             id_out = self.rbr_identity(inputs)
-
+   
         return self.nonlinearity(self.se(self.rbr_dense(inputs) + self.rbr_1x1(inputs) + id_out))
 
 
@@ -182,7 +184,7 @@ class _PSPModule(nn.Module):
 
     def _make_stages(self, in_channels, out_channels, bin_sz, norm_layer):
         prior = nn.AdaptiveAvgPool2d(output_size=bin_sz)
-        conv = RepConv(in_channels, out_channels, kernel_size=1, bias=False, deploy=self.deploy, use_se=self.use_se)
+        conv = nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False)
         bn = norm_layer(out_channels)
         relu = nn.ReLU(inplace=True)
         return nn.Sequential(prior, conv, bn, relu)
@@ -219,7 +221,7 @@ class RepPSP(BaseModel):
 
         self.master_branch = nn.Sequential(
             _PSPModule(m_out_sz, bin_sizes=[1, 2, 3, 6], norm_layer=norm_layer, deploy=self.deploy, use_se=self.use_se),
-            RepConv(m_out_sz//4, num_classes, kernel_size=1, deploy=self.deploy, use_se=self.use_se)
+            nn.Conv2d(m_out_sz//4, num_classes, kernel_size=1)
         )
 
         self.auxiliary_branch = nn.Sequential(
@@ -227,7 +229,7 @@ class RepPSP(BaseModel):
             norm_layer(m_out_sz//4),
             nn.ReLU(inplace=True),
             nn.Dropout2d(0.1),
-            RepConv(m_out_sz//4, num_classes, kernel_size=1, deploy=self.deploy, use_se=self.use_se)
+            nn.Conv2d(m_out_sz//4, num_classes, kernel_size=1)
         )
 
         initialize_weights(self.master_branch, self.auxiliary_branch)
@@ -312,7 +314,7 @@ class RepPSPDense(BaseModel):
 
         self.master_branch = nn.Sequential(
             _PSPModule(m_out_sz, bin_sizes=[1, 2, 3, 6], norm_layer=nn.BatchNorm2d, deploy=self.deploy, use_se=self.use_se),
-            RepConv(m_out_sz//4, num_classes, kernel_size=1, deploy=self.deploy, use_se=self.use_se)
+            nn.Conv2d(m_out_sz//4, num_classes, kernel_size=1)
         )
 
         self.auxiliary_branch = nn.Sequential(
@@ -320,7 +322,7 @@ class RepPSPDense(BaseModel):
             nn.BatchNorm2d(m_out_sz//4),
             nn.ReLU(inplace=True),
             nn.Dropout2d(0.1),
-            RepConv(m_out_sz//4, num_classes, kernel_size=1, deploy=self.deploy, use_se=self.use_se)
+            nn.Conv2d(m_out_sz//4, num_classes, kernel_size=1)
         )
 
         initialize_weights(self.master_branch, self.auxiliary_branch)

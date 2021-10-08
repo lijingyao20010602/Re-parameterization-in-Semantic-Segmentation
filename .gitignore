@@ -12,6 +12,8 @@ trained_models/
 
 .gitconfig
 
+*.json
 *.yaml
+*.sh
 
 
