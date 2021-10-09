@@ -81,6 +81,7 @@ class BaseTrainer:
 
         if resume: self._resume_checkpoint(resume)
 
+
     def _get_available_devices(self, n_gpu):
         sys_gpu = torch.cuda.device_count()
         if sys_gpu == 0:
@@ -157,12 +158,12 @@ class BaseTrainer:
             'monitor_best': self.mnt_best,
             'config': self.config
         }
-        filename = os.path.join(self.checkpoint_dir, f'arch-train-checkpoint.pth')
+        filename = os.path.join(self.checkpoint_dir, f'{arch}-train-checkpoint.pth')
         self.logger.info(f'\nSaving checkpoint {epoch}') 
         torch.save(state, filename)
 
         if save_best:
-            filename = os.path.join(self.checkpoint_dir, f'arch-train.pth')
+            filename = os.path.join(self.checkpoint_dir, f'{arch}-train.pth')
             torch.save(state, filename)
             self.logger.info("Saving current best")
 

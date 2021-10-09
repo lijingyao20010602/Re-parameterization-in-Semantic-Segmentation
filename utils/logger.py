@@ -2,7 +2,7 @@ import json
 import logging
 import os
 
-def setup_logger(name='MSFD', output=None, for_file=False):
+def setup_logger(name=None, output=None, for_file=False):
     # create a logger 
     logger = logging.getLogger(name) 
     logger.setLevel(logging.DEBUG) 
@@ -31,3 +31,15 @@ def setup_logger(name='MSFD', output=None, for_file=False):
         logger.addHandler(fh)
 
     return logger
+
+
+logging.basicConfig(level=logging.INFO, format='')
+class Logger:
+    def __init__(self):
+        self.entries = {}
+
+    def add_entry(self, entry):
+        self.entries[len(self.entries) + 1] = entry
+
+    def __str__(self):
+        return json.dumps(self.entries, sort_keys=True, indent=4)

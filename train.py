@@ -7,7 +7,7 @@ import models
 import inspect
 import math
 from utils import losses
-from utils import setup_logger
+from utils import setup_logger, Logger
 from utils.torchsummary import summary
 from trainer import Trainer
 
@@ -38,7 +38,8 @@ def main(config, resume):
         resume=resume,
         config=config,
         train_loader=train_loader,
-        val_loader=val_loader)
+        val_loader=val_loader,
+        train_logger=Logger())
 
     trainer.train()
 

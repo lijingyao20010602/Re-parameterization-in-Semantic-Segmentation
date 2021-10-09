@@ -4,7 +4,7 @@ import argparse
 import torch
 import dataloaders
 import models
-from utils import losses, setup_logger
+from utils import losses, setup_logger, Logger
 from utils.torchsummary import summary
 from trainer import Trainer
 
@@ -47,7 +47,8 @@ def test(args, deploy, logger):
         config=args.config,
         train_loader=train_loader,
         val_loader=val_loader,
-        logger=logger)
+        logger=logger,
+        train_logger=Logger())
 
     trainer.test()
 

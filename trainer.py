@@ -36,7 +36,7 @@ class Trainer(BaseTrainer):
 
 
     def _train_epoch(self, epoch):
-        self.logger.info('\n')
+        # self.logger.info('\n')
             
         self.model.train()
         if self.config['arch']['args']['freeze_bn']:
