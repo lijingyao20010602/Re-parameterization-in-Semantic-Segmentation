@@ -6,7 +6,7 @@ import torch
 import datetime
 from torch.utils import tensorboard
 from utils import helpers
-from utils import setup_logger
+from utils import Logger, setup_logger
 import utils.lr_scheduler
 from utils.sync_batchnorm import convert_model
 from utils.sync_batchnorm import DataParallelWithCallback
@@ -39,10 +39,10 @@ class BaseTrainer:
         config_save_path = os.path.join(self.checkpoint_dir, 'config.json')
         with open(config_save_path, 'w') as handle:
             json.dump(self.config, handle, indent=4, sort_keys=True)
-        
-        self.logger = logger if logger else setup_logger(output=self.checkpoint_dir) 
+
         writer_dir = os.path.join(cfg_trainer['log_dir'], self.config['name'], start_time)
         self.writer = tensorboard.SummaryWriter(writer_dir)
+        self.logger = setup_logger(self.__class__.__name__, output=self.checkpoint_dir)
 
         # SETTING THE DEVICE
         self.device, availble_gpus = self._get_available_devices(self.config['n_gpu'])
@@ -81,7 +81,6 @@ class BaseTrainer:
 
         if resume: self._resume_checkpoint(resume)
 
-
     def _get_available_devices(self, n_gpu):
         sys_gpu = torch.cuda.device_count()
         if sys_gpu == 0:
@@ -95,8 +94,7 @@ class BaseTrainer:
         self.logger.info(f'Detected GPUs: {sys_gpu} Requested: {n_gpu}')
         available_gpus = list(range(n_gpu))
         return device, available_gpus
-
-
+    
     def train(self):
         for epoch in range(self.start_epoch, self.epochs+1):
             # RUN TRAIN (AND VAL)
@@ -137,7 +135,6 @@ class BaseTrainer:
             if epoch % self.save_period == 0:
                 self._save_checkpoint(epoch, save_best=self.improved)
 
-    
     def test(self):
         # RUN  VAL
         results = self._valid_epoch(0)
@@ -146,7 +143,6 @@ class BaseTrainer:
         self.logger.info(f'\n         ## TEST ')
         for k, v in results.items():
             self.logger.info(f'         {str(k):15s}: {v}')
-
 
     def _save_checkpoint(self, epoch, save_best=False):
         arch = type(self.model).__name__
@@ -167,7 +163,6 @@ class BaseTrainer:
             torch.save(state, filename)
             self.logger.info("Saving current best")
 
-
     def _resume_checkpoint(self, resume_path):
         self.logger.info(f'Loading checkpoint : {resume_path}')
         checkpoint = torch.load(resume_path)
@@ -186,7 +181,6 @@ class BaseTrainer:
         self.optimizer.load_state_dict(checkpoint['optimizer'])
 
         self.logger.info(f'Checkpoint <{resume_path}> (epoch {self.start_epoch}) was loaded')
-
 
     def _train_epoch(self, epoch):
         raise NotImplementedError
