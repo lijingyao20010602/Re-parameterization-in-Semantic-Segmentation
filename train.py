@@ -22,8 +22,8 @@ def main(config, resume):
     val_loader = get_instance(dataloaders, 'val_loader', config)
 
     # MODEL
-    if config['arch']['type'].startswith('Rep'):
-        model = get_instance(models, 'arch', config, train_loader.dataset.num_classes, deploy=False)
+    if config['arch']['type'].startswith('Rep'): 
+        model = get_instance(models, 'arch', config, train_loader.dataset.num_classes, False)
     else:
         model = get_instance(models, 'arch', config, train_loader.dataset.num_classes)
     print(f'\n{model}\n')

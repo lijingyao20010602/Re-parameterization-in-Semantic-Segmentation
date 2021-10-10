@@ -15,5 +15,7 @@ trained_models/
 *.json
 *.yaml
 *.sh
+*.zip
+*.pth
 
 

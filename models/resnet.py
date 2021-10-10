@@ -26,6 +26,16 @@ model_urls = {
     'resnet152': 'https://s3.us-west-1.wasabisys.com/encoding/models/resnet152s-36670e8b.zip'
 }
 
+def model_dict(backbone, pretrained=True):
+    model_dict = {
+        'resnet18':resnet18(pretrained),
+        'resnet34':resnet34(pretrained),
+        'resnet50':resnet50(pretrained),
+        'resnet101':resnet101(pretrained),
+        'resnet152':resnet152(pretrained)
+    }
+    return model_dict[backbone]
+
 
 def conv3x3(in_planes, out_planes, stride=1):
     "3x3 convolution with padding"
@@ -237,7 +247,8 @@ def resnet18(pretrained=False, **kwargs):
     """
     model = ResNet(BasicBlock, [2, 2, 2, 2], deep_base=False, **kwargs)
     if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['resnet18']))
+        # model.load_state_dict(model_zoo.load_url(model_urls['resnet18']))
+        model.load_state_dict(torch.load('pretrained/resnet18.pth'))
     return model
 
 
@@ -249,7 +260,8 @@ def resnet34(pretrained=False, **kwargs):
     """
     model = ResNet(BasicBlock, [3, 4, 6, 3], deep_base=False, **kwargs)
     if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['resnet34']))
+        # model.load_state_dict(model_zoo.load_url(model_urls['resnet34']))
+        model.load_state_dict(torch.load('pretrained/resnet34.pth'))
     return model
 
 
@@ -261,7 +273,8 @@ def resnet50(pretrained=False, root='./pretrained', **kwargs):
     """
     model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
     if pretrained:
-        model.load_state_dict(load_url(model_urls['resnet50'], model_dir=root))
+        # model.load_state_dict(load_url(model_urls['resnet50'], model_dir=root))
+        model.load_state_dict(torch.load('pretrained/resnet50.pth'))
     return model
 
 
@@ -273,7 +286,8 @@ def resnet101(pretrained=False, root='./pretrained', **kwargs):
     """
     model = ResNet(Bottleneck, [3, 4, 23, 3], **kwargs)
     if pretrained:
-        model.load_state_dict(load_url(model_urls['resnet101'], model_dir=root))
+        # model.load_state_dict(load_url(model_urls['resnet101'], model_dir=root))
+        model.load_state_dict(torch.load('pretrained/resnet101.zip'))
     return model
 
 
@@ -285,7 +299,8 @@ def resnet152(pretrained=False, root='./pretrained', **kwargs):
     """
     model = ResNet(Bottleneck, [3, 8, 36, 3], **kwargs)
     if pretrained:
-        model.load_state_dict(load_url(model_urls['resnet152'], model_dir=root))
+        # model.load_state_dict(load_url(model_urls['resnet152'], model_dir=root))
+        model.load_state_dict(torch.load('pretrained/resnet152.pth'))
     return model
 
 

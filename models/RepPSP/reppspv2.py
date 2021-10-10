@@ -8,7 +8,7 @@ from base import BaseModel
 from utils.helpers import initialize_weights, set_trainable
 from itertools import chain
 import numpy as np
-from RepConv.dbb import RepConv
+from RepConv.repvgg import RepConv
 
 
 class _PSPModule(nn.Module):
