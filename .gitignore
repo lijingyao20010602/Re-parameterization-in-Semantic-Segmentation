@@ -2,13 +2,11 @@
 __pycache__/
 
 # input data, saved log, checkpoints and pretrained models
-data/
-input/
-saved/
-outputs/
-datasets/
-pretrained/
-trained_models/
+saved
+outputs
+datasets
+pretrained
+trained_models
 
 .gitconfig
 

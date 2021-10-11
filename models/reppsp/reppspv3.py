@@ -8,7 +8,7 @@ from base import BaseModel
 from utils.helpers import initialize_weights, set_trainable
 from itertools import chain
 import numpy as np
-from RepConv.repvgg import RepConv
+from .repconvs.ddb import RepConv
 
 
 class _PSPModule(nn.Module):
@@ -21,7 +21,7 @@ class _PSPModule(nn.Module):
                                                         for b_s in bin_sizes])
         self.bottleneck = nn.Sequential(
             RepConv(in_channels+(out_channels * len(bin_sizes)), out_channels, 
-                                    kernel_size=3, padding=1, bias=False, deploy=self.deploy, use_se=self.use_se),
+                                    kernel_size=3, padding=1, bias=False, deploy=self.deploy),
             # norm_layer(out_channels), # remove BN
             nn.ReLU(inplace=True),
             nn.Dropout2d(0.1)
@@ -58,7 +58,7 @@ class RepPSP(BaseModel):
 
         self.initial = nn.Sequential(*list(model.children())[:4])
         if in_channels != 3:
-            self.initial[0] = nn.Conv2d(in_channels, 64, kernel_size=7, stride=2, padding=3, bias=False, deploy=self.deploy, use_se=self.use_se)
+            self.initial[0] = nn.Conv2d(in_channels, 64, kernel_size=7, stride=2, padding=3, bias=False, deploy=self.deploy)
         self.initial = nn.Sequential(*self.initial)
         
         self.layer1 = model.layer1
@@ -67,12 +67,12 @@ class RepPSP(BaseModel):
         self.layer4 = model.layer4
 
         self.master_branch = nn.Sequential(
-            _PSPModule(m_out_sz, bin_sizes=[1, 2, 3, 6], norm_layer=norm_layer, deploy=self.deploy, use_se=self.use_se),
+            _PSPModule(m_out_sz, bin_sizes=[1, 2, 3, 6], norm_layer=norm_layer, deploy=self.deploy),
             nn.Conv2d(m_out_sz//4, num_classes, kernel_size=1)
         )
 
         self.auxiliary_branch = nn.Sequential(
-            RepConv(m_out_sz//2, m_out_sz//4, kernel_size=3, padding=1, bias=False, deploy=self.deploy, use_se=self.use_se),
+            RepConv(m_out_sz//2, m_out_sz//4, kernel_size=3, padding=1, bias=False, deploy=self.deploy),
             # norm_layer(m_out_sz//4), # remove BN
             nn.ReLU(inplace=True),
             nn.Dropout2d(0.1),
@@ -129,9 +129,9 @@ class RepPSPDense(BaseModel):
 
         if not pretrained or in_channels != 3:
             # If we're training from scratch, better to use 3x3 convs 
-            block0 = [RepConv(in_channels, 64, 3, stride=2, bias=False, deploy=self.deploy, use_se=self.use_se), nn.BatchNorm2d(64), nn.ReLU(inplace=True)]
+            block0 = [RepConv(in_channels, 64, 3, stride=2, bias=False, deploy=self.deploy), nn.BatchNorm2d(64), nn.ReLU(inplace=True)]
             block0.extend(
-                [RepConv(64, 64, 3, bias=False, deploy=self.deploy, use_se=self.use_se), nn.BatchNorm2d(64), nn.ReLU(inplace=True)] * 2
+                [RepConv(64, 64, 3, bias=False, deploy=self.deploy), nn.BatchNorm2d(64), nn.ReLU(inplace=True)] * 2
             )
             self.block0 = nn.Sequential(
                 *block0,
@@ -161,12 +161,12 @@ class RepPSPDense(BaseModel):
                 m.dilation, m.padding = (4,4), (4,4)
 
         self.master_branch = nn.Sequential(
-            _PSPModule(m_out_sz, bin_sizes=[1, 2, 3, 6], norm_layer=nn.BatchNorm2d, deploy=self.deploy, use_se=self.use_se),
+            _PSPModule(m_out_sz, bin_sizes=[1, 2, 3, 6], norm_layer=nn.BatchNorm2d, deploy=self.deploy),
             nn.Conv2d(m_out_sz//4, num_classes, kernel_size=1)
         )
 
         self.auxiliary_branch = nn.Sequential(
-            RepConv(aux_out_sz, m_out_sz//4, kernel_size=3, padding=1, bias=False, deploy=self.deploy, use_se=self.use_se),
+            RepConv(aux_out_sz, m_out_sz//4, kernel_size=3, padding=1, bias=False, deploy=self.deploy),
             # nn.BatchNorm2d(m_out_sz//4),
             nn.ReLU(inplace=True),
             nn.Dropout2d(0.1),

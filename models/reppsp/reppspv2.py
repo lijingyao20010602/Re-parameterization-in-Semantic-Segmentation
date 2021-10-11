@@ -8,7 +8,8 @@ from base import BaseModel
 from utils.helpers import initialize_weights, set_trainable
 from itertools import chain
 import numpy as np
-from RepConv.repvgg import RepConv
+from .repconvs.repvgg import RepConv
+
 
 class _PSPModule(nn.Module):
     def __init__(self, in_channels, bin_sizes, norm_layer, deploy=False, use_se=False):
@@ -21,18 +22,20 @@ class _PSPModule(nn.Module):
         self.bottleneck = nn.Sequential(
             RepConv(in_channels+(out_channels * len(bin_sizes)), out_channels, 
                                     kernel_size=3, padding=1, bias=False, deploy=self.deploy, use_se=self.use_se),
-            norm_layer(out_channels),
+            # norm_layer(out_channels), # remove BN
             nn.ReLU(inplace=True),
             nn.Dropout2d(0.1)
         )
 
+
     def _make_stages(self, in_channels, out_channels, bin_sz, norm_layer):
-        prior = nn.AdaptiveAvgPool2d(output_size=bin_sz)
+        prior = nn.AdaptiveAvgPool2d(output_size=bin_sz) # [1,2,3,6]
         conv = nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False)
-        bn = norm_layer(out_channels)
+        # bn = norm_layer(out_channels)
         relu = nn.ReLU(inplace=True)
-        return nn.Sequential(prior, conv, bn, relu)
+        return nn.Sequential(prior, conv, relu)
     
+
     def forward(self, features):
         h, w = features.size()[2], features.size()[3]
         pyramids = [features]
@@ -55,7 +58,7 @@ class RepPSP(BaseModel):
 
         self.initial = nn.Sequential(*list(model.children())[:4])
         if in_channels != 3:
-            self.initial[0] = RepConv(in_channels, 64, kernel_size=7, stride=2, padding=3, bias=False, deploy=self.deploy, use_se=self.use_se)
+            self.initial[0] = nn.Conv2d(in_channels, 64, kernel_size=7, stride=2, padding=3, bias=False, deploy=self.deploy, use_se=self.use_se)
         self.initial = nn.Sequential(*self.initial)
         
         self.layer1 = model.layer1
@@ -70,7 +73,7 @@ class RepPSP(BaseModel):
 
         self.auxiliary_branch = nn.Sequential(
             RepConv(m_out_sz//2, m_out_sz//4, kernel_size=3, padding=1, bias=False, deploy=self.deploy, use_se=self.use_se),
-            norm_layer(m_out_sz//4),
+            # norm_layer(m_out_sz//4), # remove BN
             nn.ReLU(inplace=True),
             nn.Dropout2d(0.1),
             nn.Conv2d(m_out_sz//4, num_classes, kernel_size=1)
@@ -92,13 +95,14 @@ class RepPSP(BaseModel):
         output = self.master_branch(x)
         output = F.interpolate(output, size=input_size, mode='bilinear')
         output = output[:, :, :input_size[0], :input_size[1]]
-
+        
         if self.training and self.use_aux:
             aux = self.auxiliary_branch(x_aux)
             aux = F.interpolate(aux, size=input_size, mode='bilinear')
             aux = aux[:, :, :input_size[0], :input_size[1]]
             return output, aux
         return output
+        
 
     def get_backbone_params(self):
         return chain(self.initial.parameters(), self.layer1.parameters(), self.layer2.parameters(), 
@@ -163,7 +167,7 @@ class RepPSPDense(BaseModel):
 
         self.auxiliary_branch = nn.Sequential(
             RepConv(aux_out_sz, m_out_sz//4, kernel_size=3, padding=1, bias=False, deploy=self.deploy, use_se=self.use_se),
-            nn.BatchNorm2d(m_out_sz//4),
+            # nn.BatchNorm2d(m_out_sz//4),
             nn.ReLU(inplace=True),
             nn.Dropout2d(0.1),
             nn.Conv2d(m_out_sz//4, num_classes, kernel_size=1)
