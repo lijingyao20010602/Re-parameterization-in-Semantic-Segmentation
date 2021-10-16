@@ -26,7 +26,6 @@ class VOCDataset(BaseDataSet):
         # self.root = os.path.join(self.root, 'VOCdevkit/VOC2012')
         self.image_dir = os.path.join(self.root, 'JPEGImages')
         self.label_dir = os.path.join(self.root, 'SegmentationClass')
-
         file_list = os.path.join(self.root, "ImageSets/Segmentation", self.split + ".txt")
         self.files = [line.rstrip() for line in tuple(open(file_list, "r"))]
     
@@ -59,8 +58,10 @@ class VOCAugDataset(BaseDataSet):
         self.files, self.labels = list(zip(*file_list))
     
     def _load_data(self, index):
-        image_path = os.path.join(self.root, self.files[index][1:])
-        label_path = os.path.join(self.root, self.labels[index][1:])
+        # image_path = os.path.join(self.root, self.files[index][1:])
+        # label_path = os.path.join(self.root, self.labels[index][1:])
+        image_path = os.path.join(self.root, self.files[index])
+        label_path = os.path.join(self.root, self.labels[index])
         image = np.asarray(Image.open(image_path), dtype=np.float32)
         label = np.asarray(Image.open(label_path), dtype=np.int32)
         image_id = self.files[index].split("/")[-1].split(".")[0]
