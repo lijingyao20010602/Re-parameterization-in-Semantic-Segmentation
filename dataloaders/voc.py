@@ -53,7 +53,7 @@ class VOCAugDataset(BaseDataSet):
     def _set_files(self):
         # self.root = os.path.join(self.root, 'VOCdevkit/VOC2012')
         # file_list = os.path.join(self.root, "ImageSets/Segmentation", self.split + ".txt")
-        file_list = os.path.join(self.root, 'lists/VOC2012_train.txt')
+        file_list = os.path.join(self.root, 'lists', self.split + ".txt")
         file_list = [line.rstrip().split(' ') for line in tuple(open(file_list, "r"))]
         self.files, self.labels = list(zip(*file_list))
     
@@ -91,7 +91,7 @@ class VOC(BaseDataLoader):
             'val': val
         }
     
-        if split in ["train_aug", "trainval_aug", "val_aug", "test_aug"]:
+        if split in ["train_aug", "trainval_aug", "val_aug", "test_aug", 'VOC2012_val', 'VOC2012_train']:
             self.dataset = VOCAugDataset(**kwargs)
         elif split in ["train", "trainval", "val", "test"]:
             self.dataset = VOCDataset(**kwargs)

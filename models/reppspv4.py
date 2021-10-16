@@ -45,10 +45,10 @@ class _PSPModule(nn.Module):
         return output
 
 
-class RepPSP(BaseModel):
+class RepPSPv4(BaseModel):
     def __init__(self, num_classes, deploy, in_channels=3, backbone='resnet152', pretrained=True, use_aux=True, 
                 freeze_bn=False, freeze_backbone=False, use_se=False):
-        super(RepPSP, self).__init__()
+        super(RepPSPv4, self).__init__()
         norm_layer = nn.BatchNorm2d
         model = getattr(resnet, backbone)(pretrained, norm_layer=norm_layer)
         m_out_sz = model.fc.in_features

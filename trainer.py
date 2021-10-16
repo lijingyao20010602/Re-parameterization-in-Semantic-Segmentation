@@ -57,7 +57,7 @@ class Trainer(BaseTrainer):
             self.optimizer.zero_grad()
             output = self.model(data)
             arch = self.config['arch']['type']
-            if arch.startswith('PSP') or arch.endswith('PSP'):
+            if arch.startswith('PSP') or arch.startswith('RepPSP'):
                 assert output[0].size()[2:] == target.size()[1:]
                 assert output[0].size()[1] == self.num_classes 
                 loss = self.loss(output[0], target)
