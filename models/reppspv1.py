@@ -80,6 +80,7 @@ class RepPSP(BaseModel):
         if freeze_bn: self.freeze_bn()
         if freeze_backbone: 
             set_trainable([self.initial, self.layer1, self.layer2, self.layer3, self.layer4], False)
+        
 
     def forward(self, x):
         input_size = (x.size()[2], x.size()[3])

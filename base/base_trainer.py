@@ -16,7 +16,7 @@ def get_instance(module, name, config, *args):
     return getattr(module, config[name]['type'])(*args, **config[name]['args'])
 
 class BaseTrainer:
-    def __init__(self, model, loss, resume, config, train_loader, val_loader=None, train_logger=None, logger=None):
+    def __init__(self, model, loss, resume, config, train_loader, val_loader=None, train_logger=None, logger=None, outputdir=None):
         self.model = model
         self.loss = loss
         self.config = config
@@ -34,7 +34,8 @@ class BaseTrainer:
 
         # CHECKPOINTS & TENSOBOARD
         start_time = datetime.datetime.now().strftime('%m-%d_%H-%M')
-        self.checkpoint_dir = os.path.join(cfg_trainer['save_dir'], self.config['name'], start_time)
+        outputdir = outputdir if outputdir else start_time
+        self.checkpoint_dir = os.path.join(cfg_trainer['save_dir'], self.config['name'], outputdir) 
         helpers.dir_exists(self.checkpoint_dir)
         config_save_path = os.path.join(self.checkpoint_dir, 'config.json')
         with open(config_save_path, 'w') as handle:
@@ -154,12 +155,12 @@ class BaseTrainer:
             'monitor_best': self.mnt_best,
             'config': self.config
         }
-        filename = os.path.join(self.checkpoint_dir, f'{arch}-train-checkpoint.pth')
-        self.logger.info(f'\nSaving checkpoint {epoch}') 
+        filename = os.path.join(self.checkpoint_dir, '{}-train-checkpoint.pth'.format(self.config['name']))
+        self.logger.info(f'Saving checkpoint {epoch}') 
         torch.save(state, filename)
 
         if save_best:
-            filename = os.path.join(self.checkpoint_dir, f'{arch}-train.pth')
+            filename = os.path.join(self.checkpoint_dir, '{}-train.pth'.format(self.config['name']))
             torch.save(state, filename)
             self.logger.info("Saving current best")
 

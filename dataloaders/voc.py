@@ -23,7 +23,7 @@ class VOCDataset(BaseDataSet):
         super(VOCDataset, self).__init__(**kwargs)
 
     def _set_files(self):
-        self.root = os.path.join(self.root, 'VOCdevkit/VOC2012')
+        # self.root = os.path.join(self.root, 'VOCdevkit/VOC2012')
         self.image_dir = os.path.join(self.root, 'JPEGImages')
         self.label_dir = os.path.join(self.root, 'SegmentationClass')
 
@@ -39,6 +39,7 @@ class VOCDataset(BaseDataSet):
         image_id = self.files[index].split("/")[-1].split(".")[0]
         return image, label, image_id
 
+
 class VOCAugDataset(BaseDataSet):
     """
     Contrains both SBD and VOC 2012 dataset
@@ -51,9 +52,9 @@ class VOCAugDataset(BaseDataSet):
         super(VOCAugDataset, self).__init__(**kwargs)
 
     def _set_files(self):
-        self.root = os.path.join(self.root, 'VOCdevkit/VOC2012')
-
-        file_list = os.path.join(self.root, "ImageSets/Segmentation", self.split + ".txt")
+        # self.root = os.path.join(self.root, 'VOCdevkit/VOC2012')
+        # file_list = os.path.join(self.root, "ImageSets/Segmentation", self.split + ".txt")
+        file_list = os.path.join(self.root, 'lists/VOC2012_train.txt')
         file_list = [line.rstrip().split(' ') for line in tuple(open(file_list, "r"))]
         self.files, self.labels = list(zip(*file_list))
     
