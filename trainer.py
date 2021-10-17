@@ -45,12 +45,12 @@ class Trainer(BaseTrainer):
             else: self.model.freeze_bn()
         self.wrt_mode = 'train'
 
-        tic = time.time()
+        # tic = time.time()
         self._reset_metrics()
         tbar = tqdm(self.train_loader, ncols=130)
         for batch_idx, (data, target) in enumerate(tbar):
-            self.data_time.update(time.time() - tic)
-            #data, target = data.to(self.device), target.to(self.device)
+            # self.data_time.update(time.time() - tic)
+            # data, target = data.to(self.device), target.to(self.device)
             self.lr_scheduler.step(epoch=epoch-1)
 
             # LOSS & OPTIMIZE
@@ -75,8 +75,8 @@ class Trainer(BaseTrainer):
             self.total_loss.update(loss.item())
 
             # measure elapsed time
-            self.batch_time.update(time.time() - tic)
-            tic = time.time()
+            # self.batch_time.update(time.time() - tic)
+            # tic = time.time()
 
             # LOGGING & TENSORBOARD
             if batch_idx % self.log_step == 0:
@@ -88,11 +88,16 @@ class Trainer(BaseTrainer):
             self._update_seg_metrics(*seg_metrics)
             pixAcc, mIoU, _ = self._get_seg_metrics().values()
             
+            # for eta
+            before_i = (epoch-1)*len(self.train_loader) + batch_idx + 1
+            after_i = self.epochs*len(self.train_loader) - before_i
+            eta = (time.time() - self.start_time)/before_i*after_i
+            eta = time.strftime("%dd %H:%M:%S", time.gmtime(eta))
+            
             # PRINT INFO
-            tbar.set_description('TRAIN ({}) | Loss: {:.3f} | Acc {:.2f} mIoU {:.2f} | B {:.2f} D {:.2f} |'.format(
+            tbar.set_description('TRAIN ({}) | Loss: {:.3f} | Acc {:.2f} mIoU {:.2f} | eta {} |'.format(
                                                 epoch, self.total_loss.average, 
-                                                pixAcc, mIoU,
-                                                self.batch_time.average, self.data_time.average))
+                                                pixAcc, mIoU, eta))
 
         # METRICS TO TENSORBOARD
         seg_metrics = self._get_seg_metrics()
@@ -176,8 +181,8 @@ class Trainer(BaseTrainer):
 
 
     def _reset_metrics(self):
-        self.batch_time = AverageMeter()
-        self.data_time = AverageMeter()
+        # self.batch_time = AverageMeter()
+        # self.data_time = AverageMeter()
         self.total_loss = AverageMeter()
         self.total_inter, self.total_union = 0, 0
         self.total_correct, self.total_label = 0, 0

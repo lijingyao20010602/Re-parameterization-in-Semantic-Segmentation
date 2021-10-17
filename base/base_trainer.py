@@ -2,6 +2,7 @@ import os
 import logging
 import json
 import math
+import time
 import torch
 import datetime
 from torch.utils import tensorboard
@@ -97,6 +98,7 @@ class BaseTrainer:
         return device, available_gpus
     
     def train(self):
+        self.start_time = time.time()
         for epoch in range(self.start_epoch, self.epochs+1):
             # RUN TRAIN (AND VAL)
             results = self._train_epoch(epoch)
