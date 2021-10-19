@@ -55,7 +55,7 @@ class RepPSPv1(BaseModel):
 
         self.initial = nn.Sequential(*list(model.children())[:4])
         if in_channels != 3:
-            self.initial[0] = RepConv(in_channels, 64, kernel_size=7, stride=2, padding=3, bias=False, deploy=self.deploy, use_se=self.use_se)
+            self.initial[0] = nn.Conv2d(in_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
         self.initial = nn.Sequential(*self.initial)
         
         self.layer1 = model.layer1
