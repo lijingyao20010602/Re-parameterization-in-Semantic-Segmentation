@@ -1,4 +1,5 @@
 import math
+import math
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -10,11 +11,10 @@ from itertools import chain
 import numpy as np
 from .repconvs.acb import RepConv
 
-
 class _PSPModule(nn.Module):
-    def __init__(self, in_channels, bin_sizes, norm_layer, deploy=False, use_se=False):
+    def __init__(self, in_channels, bin_sizes, norm_layer, deploy=False):
         self.deploy = deploy
-        self.use_se = use_se
+        
         super(_PSPModule, self).__init__()
         out_channels = in_channels // len(bin_sizes)
         self.stages = nn.ModuleList([self._make_stages(in_channels, out_channels, b_s, norm_layer) 
@@ -22,20 +22,18 @@ class _PSPModule(nn.Module):
         self.bottleneck = nn.Sequential(
             RepConv(in_channels+(out_channels * len(bin_sizes)), out_channels, 
                                     kernel_size=3, padding=1, bias=False, deploy=self.deploy),
-            norm_layer(out_channels), # remove BN
+            norm_layer(out_channels),
             nn.ReLU(inplace=True),
             nn.Dropout2d(0.1)
         )
 
-
     def _make_stages(self, in_channels, out_channels, bin_sz, norm_layer):
-        prior = nn.AdaptiveAvgPool2d(output_size=bin_sz) # [1,2,3,6]
+        prior = nn.AdaptiveAvgPool2d(output_size=bin_sz)
         conv = nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False)
         bn = norm_layer(out_channels)
         relu = nn.ReLU(inplace=True)
-        return nn.Sequential(prior, conv, relu, bn)
+        return nn.Sequential(prior, conv, bn, relu)
     
-
     def forward(self, features):
         h, w = features.size()[2], features.size()[3]
         pyramids = [features]
@@ -47,18 +45,18 @@ class _PSPModule(nn.Module):
 
 class RepPSPv6(BaseModel):
     def __init__(self, num_classes, deploy, in_channels=3, backbone='resnet152', pretrained=True, use_aux=True, 
-                freeze_bn=False, freeze_backbone=False, use_se=False):
+                freeze_bn=False, freeze_backbone=False):
         super(RepPSPv6, self).__init__()
         norm_layer = nn.BatchNorm2d
         model = getattr(resnet, backbone)(pretrained, norm_layer=norm_layer)
         m_out_sz = model.fc.in_features
         self.use_aux = use_aux 
         self.deploy = deploy
-        self.use_se = use_se
+        
 
         self.initial = nn.Sequential(*list(model.children())[:4])
         if in_channels != 3:
-            self.initial[0] = nn.Conv2d(in_channels, 64, kernel_size=7, stride=2, padding=3, bias=False, deploy=self.deploy)
+            self.initial[0] = RepConv(in_channels, 64, kernel_size=7, stride=2, padding=3, bias=False, deploy=self.deploy)
         self.initial = nn.Sequential(*self.initial)
         
         self.layer1 = model.layer1
@@ -73,7 +71,7 @@ class RepPSPv6(BaseModel):
 
         self.auxiliary_branch = nn.Sequential(
             RepConv(m_out_sz//2, m_out_sz//4, kernel_size=3, padding=1, bias=False, deploy=self.deploy),
-            norm_layer(m_out_sz//4), # remove BN
+            norm_layer(m_out_sz//4),
             nn.ReLU(inplace=True),
             nn.Dropout2d(0.1),
             nn.Conv2d(m_out_sz//4, num_classes, kernel_size=1)
@@ -83,6 +81,7 @@ class RepPSPv6(BaseModel):
         if freeze_bn: self.freeze_bn()
         if freeze_backbone: 
             set_trainable([self.initial, self.layer1, self.layer2, self.layer3, self.layer4], False)
+        
 
     def forward(self, x):
         input_size = (x.size()[2], x.size()[3])
@@ -95,14 +94,13 @@ class RepPSPv6(BaseModel):
         output = self.master_branch(x)
         output = F.interpolate(output, size=input_size, mode='bilinear')
         output = output[:, :, :input_size[0], :input_size[1]]
-        
+
         if self.training and self.use_aux:
             aux = self.auxiliary_branch(x_aux)
             aux = F.interpolate(aux, size=input_size, mode='bilinear')
             aux = aux[:, :, :input_size[0], :input_size[1]]
             return output, aux
         return output
-        
 
     def get_backbone_params(self):
         return chain(self.initial.parameters(), self.layer1.parameters(), self.layer2.parameters(), 
@@ -118,11 +116,11 @@ class RepPSPv6(BaseModel):
 
 class RepPSPDense(BaseModel):
     '''PSP with dense net as the backbone'''
-    def __init__(self, num_classes, in_channels=3, backbone='densenet201', pretrained=True, use_aux=True, freeze_bn=False, deploy=False, use_se=False, **_):
+    def __init__(self, num_classes, in_channels=3, backbone='densenet201', pretrained=True, use_aux=True, freeze_bn=False, deploy=False, **_):
         super(RepPSPDense, self).__init__()
         self.use_aux = use_aux
         self.deploy = deploy
-        self.use_se = use_se 
+         
         model = getattr(models, backbone)(pretrained)
         m_out_sz = model.classifier.in_features
         aux_out_sz = model.features.transition3.conv.out_channels
