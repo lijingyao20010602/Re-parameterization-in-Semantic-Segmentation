@@ -10,3 +10,4 @@ from .upernet import UperNet
 from .pspnet import PSPNet
 from .pspnet import PSPDenseNet
 from .reppspv1 import RepPSPv1
+from .repdeeplab import RepDeepLab

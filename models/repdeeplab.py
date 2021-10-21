@@ -7,6 +7,7 @@ import torch.utils.model_zoo as model_zoo
 from utils.helpers import initialize_weights
 from itertools import chain
 from models.resnet import model_dict
+from .repconvs.repvgg import RepConv
 ''' 
 -> ResNet BackBone
 '''
@@ -69,14 +70,14 @@ Pretrained model from https://github.com/Cadene/pretrained-models.pytorch
 by Remi Cadene
 ''' 
 class SeparableConv2d(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, dilation=1, bias=False, BatchNorm=nn.BatchNorm2d):
+    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, dilation=1, bias=False, BatchNorm=nn.BatchNorm2d, deploy=False):
         super(SeparableConv2d, self).__init__()
         
         if dilation > kernel_size//2: padding = dilation
         else: padding = kernel_size//2
-
-        self.conv1 = nn.Conv2d(in_channels, in_channels, kernel_size, stride, padding=padding, 
-                                    dilation=dilation, groups=in_channels, bias=bias)
+        self.deploy = deploy
+        self.conv1 = RepConv(in_channels, in_channels, kernel_size, stride, padding=padding, 
+                                    dilation=dilation, groups=in_channels, bias=bias, deploy=self.deploy)
         self.bn = nn.BatchNorm2d(in_channels)
         self.pointwise = nn.Conv2d(in_channels, out_channels, 1, 1, bias=bias)
 
@@ -88,7 +89,7 @@ class SeparableConv2d(nn.Module):
 
 
 class Block(nn.Module):
-    def __init__(self, in_channels, out_channels, stride=1, dilation=1, exit_flow=False, use_1st_relu=True):
+    def __init__(self, in_channels, out_channels, stride=1, dilation=1, exit_flow=False, use_1st_relu=True, deploy=False):
         super(Block, self).__init__()
 
         if in_channels != out_channels or stride !=1:
@@ -98,24 +99,25 @@ class Block(nn.Module):
         
         rep = []
         self.relu = nn.ReLU(inplace=True)
+        self.deploy = deploy
 
         rep.append(self.relu)
-        rep.append(SeparableConv2d(in_channels, out_channels, 3, stride=1, dilation=dilation))
+        rep.append(SeparableConv2d(in_channels, out_channels, 3, stride=1, dilation=dilation, deploy=self.deploy))
         rep.append(nn.BatchNorm2d(out_channels))
 
         rep.append(self.relu)
-        rep.append(SeparableConv2d(out_channels, out_channels, 3, stride=1, dilation=dilation))
+        rep.append(SeparableConv2d(out_channels, out_channels, 3, stride=1, dilation=dilation, deploy=self.deploy))
         rep.append(nn.BatchNorm2d(out_channels))
 
         rep.append(self.relu)
-        rep.append(SeparableConv2d(out_channels, out_channels, 3, stride=stride, dilation=dilation))
+        rep.append(SeparableConv2d(out_channels, out_channels, 3, stride=stride, dilation=dilation, deploy=self.deploy))
         rep.append(nn.BatchNorm2d(out_channels))
 
         if exit_flow:
             rep[3:6] = rep[:3]
             rep[:3] = [
                 self.relu,
-                SeparableConv2d(in_channels, in_channels, 3, 1, dilation),
+                SeparableConv2d(in_channels, in_channels, 3, 1, dilation, deploy=self.deploy),
                 nn.BatchNorm2d(in_channels)]
         
         if not use_1st_relu: rep = rep[1:]
@@ -132,37 +134,40 @@ class Block(nn.Module):
         x = output + skip
         return x
 
+
 class Xception(nn.Module):
-    def __init__(self, output_stride=16, in_channels=3, pretrained=True):
+    def __init__(self, output_stride=16, in_channels=3, pretrained=True, deploy=False):
         super(Xception, self).__init__()
 
         # Stride for block 3 (entry flow), and the dilation rates for middle flow and exit flow
         if output_stride == 16: b3_s, mf_d, ef_d = 2, 1, (1, 2)
         if output_stride == 8: b3_s, mf_d, ef_d = 1, 2, (2, 4)
         
+        self.deploy = deploy
+
         # Entry Flow
-        self.conv1 = nn.Conv2d(in_channels, 32, 3, 2, padding=1, bias=False)
+        self.conv1 = RepConv(in_channels, 32, 3, 2, padding=1, bias=False, deploy=self.deploy)
         self.bn1 = nn.BatchNorm2d(32)
         self.relu = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(32, 64, 3, 1, padding=1, bias=False)
+        self.conv2 = RepConv(32, 64, 3, 1, padding=1, bias=False, deploy=self.deploy)
         self.bn2 = nn.BatchNorm2d(64)
 
-        self.block1 = Block(64, 128, stride=2, dilation=1, use_1st_relu=False)
-        self.block2 = Block(128, 256, stride=2, dilation=1)
-        self.block3 = Block(256, 728, stride=b3_s, dilation=1)
+        self.block1 = Block(64, 128, stride=2, dilation=1, use_1st_relu=False, deploy=self.deploy)
+        self.block2 = Block(128, 256, stride=2, dilation=1, deploy=self.deploy)
+        self.block3 = Block(256, 728, stride=b3_s, dilation=1, deploy=self.deploy)
 
         # Middle Flow
         for i in range(16):
             exec(f'self.block{i+4} = Block(728, 728, stride=1, dilation=mf_d)')
 
         # Exit flow
-        self.block20 = Block(728, 1024, stride=1, dilation=ef_d[0], exit_flow=True)
+        self.block20 = Block(728, 1024, stride=1, dilation=ef_d[0], exit_flow=True, deploy=self.deploy)
 
-        self.conv3 = SeparableConv2d(1024, 1536, 3, stride=1, dilation=ef_d[1])
+        self.conv3 = SeparableConv2d(1024, 1536, 3, stride=1, dilation=ef_d[1], deploy=self.deploy)
         self.bn3 = nn.BatchNorm2d(1536)
-        self.conv4 = SeparableConv2d(1536, 1536, 3, stride=1, dilation=ef_d[1])
+        self.conv4 = SeparableConv2d(1536, 1536, 3, stride=1, dilation=ef_d[1], deploy=self.deploy)
         self.bn4 = nn.BatchNorm2d(1536)
-        self.conv5 = SeparableConv2d(1536, 2048, 3, stride=1, dilation=ef_d[1])
+        self.conv5 = SeparableConv2d(1536, 2048, 3, stride=1, dilation=ef_d[1], deploy=self.deploy)
         self.bn5 = nn.BatchNorm2d(2048)
 
         initialize_weights(self)
@@ -251,25 +256,33 @@ class Xception(nn.Module):
 -> The Atrous Spatial Pyramid Pooling
 '''
 
-def assp_branch(in_channels, out_channles, kernel_size, dilation):
+def assp_branch(in_channels, out_channles, kernel_size, dilation, deploy=False):
     padding = 0 if kernel_size == 1 else dilation
+    if kernel_size == 3 & padding == 1:
+        conv = RepConv(in_channels, out_channles, 3, padding=1, dilation=dilation, bias=False, deploy=deploy)
+    else:
+        conv = nn.Conv2d(in_channels, out_channles, kernel_size, padding=padding, dilation=dilation, bias=False)
+    
     return nn.Sequential(
-            nn.Conv2d(in_channels, out_channles, kernel_size, padding=padding, dilation=dilation, bias=False),
+            conv,
             nn.BatchNorm2d(out_channles),
             nn.ReLU(inplace=True))
 
+
 class ASSP(nn.Module):
-    def __init__(self, in_channels, output_stride):
+    def __init__(self, in_channels, output_stride, deploy=False):
         super(ASSP, self).__init__()
+
+        self.deploy = deploy
 
         assert output_stride in [8, 16], 'Only output strides of 8 or 16 are suported'
         if output_stride == 16: dilations = [1, 6, 12, 18]
         elif output_stride == 8: dilations = [1, 12, 24, 36]
         
-        self.aspp1 = assp_branch(in_channels, 256, 1, dilation=dilations[0])
-        self.aspp2 = assp_branch(in_channels, 256, 3, dilation=dilations[1])
-        self.aspp3 = assp_branch(in_channels, 256, 3, dilation=dilations[2])
-        self.aspp4 = assp_branch(in_channels, 256, 3, dilation=dilations[3])
+        self.aspp1 = assp_branch(in_channels, 256, 1, dilation=dilations[0], deploy=self.deploy)
+        self.aspp2 = assp_branch(in_channels, 256, 3, dilation=dilations[1], deploy=self.deploy)
+        self.aspp3 = assp_branch(in_channels, 256, 3, dilation=dilations[2], deploy=self.deploy)
+        self.aspp4 = assp_branch(in_channels, 256, 3, dilation=dilations[3], deploy=self.deploy)
 
         self.avg_pool = nn.Sequential(
             nn.AdaptiveAvgPool2d((1, 1)),
@@ -300,20 +313,21 @@ class ASSP(nn.Module):
 ''' 
 -> Decoder
 '''
-
 class Decoder(nn.Module):
-    def __init__(self, low_level_channels, num_classes):
+    def __init__(self, low_level_channels, num_classes, deploy=False):
         super(Decoder, self).__init__()
         self.conv1 = nn.Conv2d(low_level_channels, 48, 1, bias=False)
         self.bn1 = nn.BatchNorm2d(48)
         self.relu = nn.ReLU(inplace=True)
+        
+        self.deploy = deploy
 
         # Table 2, best performance with two 3x3 convs
         self.output = nn.Sequential(
-            nn.Conv2d(48+256, 256, 3, stride=1, padding=1, bias=False),
+            RepConv(48+256, 256, 3, stride=1, padding=1, bias=False, deploy=self.deploy),
             nn.BatchNorm2d(256),
             nn.ReLU(inplace=True),
-            nn.Conv2d(256, 256, 3, stride=1, padding=1, bias=False),
+            RepConv(256, 256, 3, stride=1, padding=1, bias=False, deploy=self.deploy),
             nn.BatchNorm2d(256),
             nn.ReLU(inplace=True),
             nn.Dropout(0.1),
@@ -334,21 +348,23 @@ class Decoder(nn.Module):
 -> Deeplab V3 +
 '''
 
-class DeepLab(BaseModel):
-    def __init__(self, num_classes, in_channels=3, backbone='xception', pretrained=True, 
+class RepDeepLab(BaseModel):
+    def __init__(self, num_classes, deploy=False, in_channels=3, backbone='xception', pretrained=True, 
                 output_stride=16, freeze_bn=False, freeze_backbone=False, **_):
                 
-        super(DeepLab, self).__init__()
+        self.deploy = deploy
+
+        super(RepDeepLab, self).__init__()
         assert ('xception' or 'resnet' in backbone)
         if 'resnet' in backbone:
             self.backbone = ResNet(in_channels=in_channels, output_stride=output_stride, pretrained=pretrained)
             low_level_channels = 256
         else:
-            self.backbone = Xception(output_stride=output_stride, pretrained=pretrained)
+            self.backbone = Xception(output_stride=output_stride, pretrained=pretrained, deploy=self.deploy)
             low_level_channels = 128
 
-        self.ASSP = ASSP(in_channels=2048, output_stride=output_stride)
-        self.decoder = Decoder(low_level_channels, num_classes)
+        self.ASSP = ASSP(in_channels=2048, output_stride=output_stride, deploy=self.deploy)
+        self.decoder = Decoder(low_level_channels, num_classes, deploy=self.deploy)
 
         if freeze_bn: self.freeze_bn()
         if freeze_backbone: 
