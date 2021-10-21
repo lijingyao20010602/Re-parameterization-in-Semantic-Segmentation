@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torch.utils.model_zoo as model_zoo
 from utils.helpers import initialize_weights
 from itertools import chain
-from models.resnet import model_dict
+from .backbone.resnet import model_dict
 from .repconvs import RepConv
 ''' 
 -> ResNet BackBone
@@ -16,7 +16,6 @@ class ResNet(nn.Module):
     def __init__(self, in_channels=3, output_stride=16, backbone='resnet101', pretrained=True):
         super(ResNet, self).__init__()
         model = model_dict(backbone, pretrained)
-        # model = model_dict[backbone](pretrained)
         if not pretrained or in_channels != 3:
             self.layer0 = nn.Sequential(
                 nn.Conv2d(in_channels, 64, 7, stride=2, padding=3, bias=False),

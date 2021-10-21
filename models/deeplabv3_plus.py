@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torch.utils.model_zoo as model_zoo
 from utils.helpers import initialize_weights
 from itertools import chain
-from models.resnet import model_dict
+from .backbone.resnet import model_dict
 ''' 
 -> ResNet BackBone
 '''

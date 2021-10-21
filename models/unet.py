@@ -6,7 +6,7 @@ from itertools import chain
 from base import BaseModel
 from utils.helpers import initialize_weights, set_trainable
 from itertools import chain
-from models import resnet
+from .backbone import resnet
 
 def x2conv(in_channels, out_channels, inner_channels=None):
     inner_channels = out_channels // 2 if inner_channels is None else inner_channels
@@ -114,8 +114,6 @@ class UNet(BaseModel):
     def freeze_bn(self):
         for module in self.modules():
             if isinstance(module, nn.BatchNorm2d): module.eval()
-
-
 
 
 """

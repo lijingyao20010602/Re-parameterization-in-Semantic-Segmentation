@@ -3,7 +3,7 @@ import math
 import torch
 import torch.nn.functional as F
 from torch import nn
-from models import resnet
+from .backbone import resnet
 from torchvision import models
 from base import BaseModel
 from utils.helpers import initialize_weights, set_trainable

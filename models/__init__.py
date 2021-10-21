@@ -4,11 +4,12 @@ from .segnet import SegNet
 from .segnet import SegResNet
 from .enet import ENet
 from .gcn import GCN
-from .deeplabv3_plus import DeepLab
-from .duc_hdc import DeepLab_DUC_HDC
 from .upernet import UperNet
+from .repenet import RepENet
 from .pspnet import PSPNet
 from .pspnet import PSPDenseNet
 from .reppsp import RepPSPv1
+from .deeplabv3_plus import DeepLab
 from .repdeeplab import RepDeepLab
+from .duc_hdc import DeepLab_DUC_HDC
 from .repduchdc import RepDUCHDC
