@@ -3,7 +3,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from .backbone import resnet
-from torchvision import models
+from .backbone import densenet
 from base import BaseModel
 from utils.helpers import initialize_weights, set_trainable
 from itertools import chain
@@ -120,7 +120,7 @@ class RepPSPDense(BaseModel):
         self.use_aux = use_aux
         self.deploy = deploy
         self.use_se = use_se 
-        model = getattr(models, backbone)(pretrained)
+        model = getattr(densenet, backbone)(pretrained)
         m_out_sz = model.classifier.in_features
         aux_out_sz = model.features.transition3.conv.out_channels
 

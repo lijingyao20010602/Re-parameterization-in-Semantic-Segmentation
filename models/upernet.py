@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision import models
 from base import BaseModel
 from utils.helpers import initialize_weights
 from itertools import chain

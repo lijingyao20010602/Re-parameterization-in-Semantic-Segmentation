@@ -3,7 +3,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from .backbone import resnet
-from torchvision import models
+from .backbone import densenet
 from base import BaseModel
 from utils.helpers import initialize_weights, set_trainable
 from itertools import chain
@@ -105,20 +105,12 @@ class PSPNet(BaseModel):
             if isinstance(module, nn.BatchNorm2d): module.eval()
 
 
-
-
-
-
-
-
-
 ## PSP with dense net as the backbone
-
 class PSPDenseNet(BaseModel):
     def __init__(self, num_classes, in_channels=3, backbone='densenet201', pretrained=True, use_aux=True, freeze_bn=False, **_):
         super(PSPDenseNet, self).__init__()
         self.use_aux = use_aux 
-        model = getattr(models, backbone)(pretrained)
+        model = getattr(densenet, backbone)(pretrained)
         m_out_sz = model.classifier.in_features
         aux_out_sz = model.features.transition3.conv.out_channels
 

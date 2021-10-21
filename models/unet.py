@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from itertools import chain
-from base import BaseModel
 from utils.helpers import initialize_weights, set_trainable
 from itertools import chain
 from .backbone import resnet
