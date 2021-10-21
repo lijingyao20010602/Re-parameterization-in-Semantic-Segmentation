@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from base import BaseModel
 from utils.helpers import initialize_weights
 from itertools import chain
+from .backbone import resnet
 
 class PSPModule(nn.Module):
     # In the original inmplementation they use precise RoI pooling 
@@ -36,10 +37,11 @@ class PSPModule(nn.Module):
         output = self.bottleneck(torch.cat(pyramids, dim=1))
         return output
 
+
 class ResNet(nn.Module):
     def __init__(self, in_channels=3, output_stride=16, backbone='resnet101', pretrained=True):
         super(ResNet, self).__init__()
-        model = getattr(models, backbone)(pretrained)
+        model = getattr(resnet, backbone)(pretrained)
         if not pretrained or in_channels != 3:
             self.initial = nn.Sequential(
                 nn.Conv2d(in_channels, 64, 7, stride=2, padding=3, bias=False),
@@ -85,8 +87,10 @@ class ResNet(nn.Module):
 
         return [x1, x2, x3, x4]
 
+
 def up_and_add(x, y):
     return F.interpolate(x, size=(y.size(2), y.size(3)), mode='bilinear', align_corners=True) + y
+
 
 class FPN_fuse(nn.Module):
     def __init__(self, feature_channels=[256, 512, 1024, 2048], fpn_out=256):
@@ -115,9 +119,10 @@ class FPN_fuse(nn.Module):
         x = self.conv_fusion(torch.cat((P), dim=1))
         return x
 
+
 class UperNet(BaseModel):
     # Implementing only the object path
-    def __init__(self, num_classes, in_channels=3, backbone='resnet101', pretrained=True, use_aux=True, fpn_out=256, freeze_bn=False, **_):
+    def __init__(self, num_classes, in_channels=3, backbone='resnet101', pretrained=True, use_aux=True, fpn_out=256, freeze_bn=False, freeze_backbone=False, **_):
         super(UperNet, self).__init__()
 
         if backbone == 'resnet34' or backbone == 'resnet18':

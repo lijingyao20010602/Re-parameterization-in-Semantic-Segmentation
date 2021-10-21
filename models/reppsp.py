@@ -115,7 +115,7 @@ class RepPSPv1(BaseModel):
 
 class RepPSPDense(BaseModel):
     '''PSP with dense net as the backbone'''
-    def __init__(self, num_classes, in_channels=3, backbone='densenet201', pretrained=True, use_aux=True, freeze_bn=False, deploy=False, use_se=False, **_):
+    def __init__(self, num_classes, deploy=False, use_se=False, in_channels=3, backbone='densenet201', pretrained=True, use_aux=True, freeze_bn=False, **_):
         super(RepPSPDense, self).__init__()
         self.use_aux = use_aux
         self.deploy = deploy
@@ -126,9 +126,9 @@ class RepPSPDense(BaseModel):
 
         if not pretrained or in_channels != 3:
             # If we're training from scratch, better to use 3x3 convs 
-            block0 = [RepConv(in_channels, 64, 3, stride=2, bias=False, deploy=self.deploy, use_se=self.use_se), nn.BatchNorm2d(64), nn.ReLU(inplace=True)]
+            block0 = [nn.Conv2d(in_channels, 64, 3, stride=2, bias=False), nn.BatchNorm2d(64), nn.ReLU(inplace=True)]
             block0.extend(
-                [RepConv(64, 64, 3, bias=False, deploy=self.deploy, use_se=self.use_se), nn.BatchNorm2d(64), nn.ReLU(inplace=True)] * 2
+                [nn.Conv2d(64, 64, 3, bias=False), nn.BatchNorm2d(64), nn.ReLU(inplace=True)] * 2
             )
             self.block0 = nn.Sequential(
                 *block0,
