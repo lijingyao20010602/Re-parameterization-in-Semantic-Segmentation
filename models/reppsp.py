@@ -11,16 +11,16 @@ import numpy as np
 from .repconvs import RepConv
 
 class _PSPModule(nn.Module):
-    def __init__(self, in_channels, bin_sizes, norm_layer, deploy=False, use_se=False):
+    def __init__(self, in_channels, bin_sizes, norm_layer, deploy=False):
         self.deploy = deploy
-        self.use_se = use_se
+        
         super(_PSPModule, self).__init__()
         out_channels = in_channels // len(bin_sizes)
         self.stages = nn.ModuleList([self._make_stages(in_channels, out_channels, b_s, norm_layer) 
                                                         for b_s in bin_sizes])
         self.bottleneck = nn.Sequential(
             RepConv(in_channels+(out_channels * len(bin_sizes)), out_channels, 
-                                    kernel_size=3, padding=1, bias=False, deploy=self.deploy, use_se=self.use_se),
+                                    kernel_size=3, padding=1, bias=False, deploy=self.deploy),
             norm_layer(out_channels),
             nn.ReLU(inplace=True),
             nn.Dropout2d(0.1)
@@ -44,14 +44,14 @@ class _PSPModule(nn.Module):
 
 class RepPSPv1(BaseModel):
     def __init__(self, num_classes, deploy, in_channels=3, backbone='resnet152', pretrained=True, use_aux=True, 
-                freeze_bn=False, freeze_backbone=False, use_se=False):
+                freeze_bn=False, freeze_backbone=False):
         super(RepPSPv1, self).__init__()
         norm_layer = nn.BatchNorm2d
         model = getattr(resnet, backbone)(pretrained, norm_layer=norm_layer)
         m_out_sz = model.fc.in_features
         self.use_aux = use_aux 
         self.deploy = deploy
-        self.use_se = use_se
+        
 
         self.initial = nn.Sequential(*list(model.children())[:4])
         if in_channels != 3:
@@ -64,12 +64,12 @@ class RepPSPv1(BaseModel):
         self.layer4 = model.layer4
 
         self.master_branch = nn.Sequential(
-            _PSPModule(m_out_sz, bin_sizes=[1, 2, 3, 6], norm_layer=norm_layer, deploy=self.deploy, use_se=self.use_se),
+            _PSPModule(m_out_sz, bin_sizes=[1, 2, 3, 6], norm_layer=norm_layer, deploy=self.deploy),
             nn.Conv2d(m_out_sz//4, num_classes, kernel_size=1)
         )
 
         self.auxiliary_branch = nn.Sequential(
-            RepConv(m_out_sz//2, m_out_sz//4, kernel_size=3, padding=1, bias=False, deploy=self.deploy, use_se=self.use_se),
+            RepConv(m_out_sz//2, m_out_sz//4, kernel_size=3, padding=1, bias=False, deploy=self.deploy),
             norm_layer(m_out_sz//4),
             nn.ReLU(inplace=True),
             nn.Dropout2d(0.1),
@@ -115,11 +115,11 @@ class RepPSPv1(BaseModel):
 
 class RepPSPDense(BaseModel):
     '''PSP with dense net as the backbone'''
-    def __init__(self, num_classes, deploy=False, use_se=False, in_channels=3, backbone='densenet201', pretrained=True, use_aux=True, freeze_bn=False, **_):
+    def __init__(self, num_classes, deploy=False, in_channels=3, backbone='densenet201', pretrained=True, use_aux=True, freeze_bn=False, **_):
         super(RepPSPDense, self).__init__()
         self.use_aux = use_aux
         self.deploy = deploy
-        self.use_se = use_se 
+         
         model = getattr(densenet, backbone)(pretrained)
         m_out_sz = model.classifier.in_features
         aux_out_sz = model.features.transition3.conv.out_channels
@@ -158,12 +158,12 @@ class RepPSPDense(BaseModel):
                 m.dilation, m.padding = (4,4), (4,4)
 
         self.master_branch = nn.Sequential(
-            _PSPModule(m_out_sz, bin_sizes=[1, 2, 3, 6], norm_layer=nn.BatchNorm2d, deploy=self.deploy, use_se=self.use_se),
+            _PSPModule(m_out_sz, bin_sizes=[1, 2, 3, 6], norm_layer=nn.BatchNorm2d, deploy=self.deploy),
             nn.Conv2d(m_out_sz//4, num_classes, kernel_size=1)
         )
 
         self.auxiliary_branch = nn.Sequential(
-            RepConv(aux_out_sz, m_out_sz//4, kernel_size=3, padding=1, bias=False, deploy=self.deploy, use_se=self.use_se),
+            RepConv(aux_out_sz, m_out_sz//4, kernel_size=3, padding=1, bias=False, deploy=self.deploy),
             nn.BatchNorm2d(m_out_sz//4),
             nn.ReLU(inplace=True),
             nn.Dropout2d(0.1),
