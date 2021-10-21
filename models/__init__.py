@@ -9,5 +9,6 @@ from .duc_hdc import DeepLab_DUC_HDC
 from .upernet import UperNet
 from .pspnet import PSPNet
 from .pspnet import PSPDenseNet
-from .reppspv1 import RepPSPv1
+from .reppsp import RepPSPv1
 from .repdeeplab import RepDeepLab
+from .repduchdc import RepDUCHDC

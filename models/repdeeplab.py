@@ -7,7 +7,7 @@ import torch.utils.model_zoo as model_zoo
 from utils.helpers import initialize_weights
 from itertools import chain
 from models.resnet import model_dict
-from .repconvs.repvgg import RepConv
+from .repconvs import RepConv
 ''' 
 -> ResNet BackBone
 '''

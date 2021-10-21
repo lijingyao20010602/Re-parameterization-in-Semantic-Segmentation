@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import torch.utils.model_zoo as model_zoo
 from utils.helpers import initialize_weights
 from itertools import chain
-
+from .repconvs import RepConv
 ''' 
 -> Dense upsampling convolution block
 '''
@@ -116,15 +116,21 @@ class ResNet_HDC_DUC(nn.Module):
 -> The Atrous Spatial Pyramid Pooling
 '''
 
-def assp_branch(in_channels, out_channles, kernel_size, dilation):
+def assp_branch(in_channels, out_channles, kernel_size, dilation, deploy=False):
     padding = 0 if kernel_size == 1 else dilation
+    if kernel_size == 3 & padding == 1:
+        conv = RepConv(in_channels, out_channles, 3, padding=1, dilation=dilation, bias=False, deploy=deploy)
+    else:
+        conv = nn.Conv2d(in_channels, out_channles, kernel_size, padding=padding, dilation=dilation, bias=False)
+    
     return nn.Sequential(
-            nn.Conv2d(in_channels, out_channles, kernel_size, padding=padding, dilation=dilation, bias=False),
+            conv,
             nn.BatchNorm2d(out_channles),
             nn.ReLU(inplace=True))
 
+
 class ASSP(nn.Module):
-    def __init__(self, in_channels, output_stride, assp_channels=6):
+    def __init__(self, in_channels, output_stride, assp_channels=6, deploy=False):
         super(ASSP, self).__init__()
 
         assert output_stride in [4, 8], 'Only output strides of 8 or 16 are suported'
@@ -133,10 +139,12 @@ class ASSP(nn.Module):
         dilations = dilations[:assp_channels]
         self.assp_channels = assp_channels
 
-        self.aspp1 = assp_branch(in_channels, 256, 1, dilation=dilations[0])
-        self.aspp2 = assp_branch(in_channels, 256, 3, dilation=dilations[1])
-        self.aspp3 = assp_branch(in_channels, 256, 3, dilation=dilations[2])
-        self.aspp4 = assp_branch(in_channels, 256, 3, dilation=dilations[3])
+        self.deploy = deploy
+
+        self.aspp1 = assp_branch(in_channels, 256, 1, dilation=dilations[0], deploy=self.deploy)
+        self.aspp2 = assp_branch(in_channels, 256, 3, dilation=dilations[1], deploy=self.deploy)
+        self.aspp3 = assp_branch(in_channels, 256, 3, dilation=dilations[2], deploy=self.deploy)
+        self.aspp4 = assp_branch(in_channels, 256, 3, dilation=dilations[3], deploy=self.deploy)
         if self.assp_channels == 6:
             self.aspp5 = assp_branch(in_channels, 256, 3, dilation=dilations[4])
             self.aspp6 = assp_branch(in_channels, 256, 3, dilation=dilations[5])
@@ -178,18 +186,20 @@ class ASSP(nn.Module):
 '''
 
 class Decoder(nn.Module):
-    def __init__(self, low_level_channels, num_classes):
+    def __init__(self, low_level_channels, num_classes, deploy=False):
         super(Decoder, self).__init__()
         self.conv1 = nn.Conv2d(low_level_channels, 48, 1, bias=False)
         self.bn1 = nn.BatchNorm2d(48)
         self.relu = nn.ReLU(inplace=True)
         self.DUC = DUC(256, 256, upscale=2)
 
+        self.deploy = deploy
+
         self.output = nn.Sequential(
-            nn.Conv2d(48+256, 256, 3, stride=1, padding=1, bias=False),
+            RepConv(48+256, 256, 3, stride=1, padding=1, bias=False, deploy=self.deploy),
             nn.BatchNorm2d(256),
             nn.ReLU(inplace=True),
-            nn.Conv2d(256, 256, 3, stride=1, padding=1, bias=False),
+            RepConv(256, 256, 3, stride=1, padding=1, bias=False, deploy=self.deploy),
             nn.BatchNorm2d(256),
             nn.ReLU(inplace=True),
             nn.Dropout(0.1),
@@ -211,14 +221,15 @@ class Decoder(nn.Module):
 -> Deeplab V3 + with DUC & HDC
 '''
 
-class DeepLab_DUC_HDC(BaseModel):
-    def __init__(self, num_classes, in_channels=3, pretrained=True, output_stride=8, freeze_bn=False, freeze_backbone=False, **_):
-        super(DeepLab_DUC_HDC, self).__init__()
+class RepDUCHDC(BaseModel):
+    def __init__(self, num_classes, deploy=False, in_channels=3, pretrained=True, output_stride=8, freeze_bn=False, freeze_backbone=False, **_):
+        super(RepDUCHDC, self).__init__()
 
         self.backbone = ResNet_HDC_DUC(in_channels=in_channels, output_stride=output_stride, pretrained=pretrained)
         low_level_channels = 256
 
-        self.ASSP = ASSP(in_channels=2048, output_stride=output_stride)
+        self.deploy = deploy
+        self.ASSP = ASSP(in_channels=2048, output_stride=output_stride, deploy=self.deploy)
         self.decoder = Decoder(low_level_channels, num_classes)
         self.DUC_out = DUC(num_classes, num_classes, 4)
         if freeze_bn: self.freeze_bn()
