@@ -186,7 +186,7 @@ class RepConv(nn.Module):
         for para in self.parameters():
             para.detach_()
         self.__delattr__('dbb_origin')
-        self.__delattr__('dbb_avg')
+        # self.__delattr__('dbb_avg')
         if hasattr(self, 'dbb_1x1'):
             self.__delattr__('dbb_1x1')
         self.__delattr__('dbb_1x1_kxk')

@@ -108,11 +108,14 @@ class RepConv(nn.Module):
                                       padding=padding, dilation=dilation, groups=groups, bias=True)
 
         else:
+            # dbb_origin
             self.dbb_origin = conv_bn(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation, groups=groups)
 
-            # print('self.dbb_identity is created')
-            self.dbb_identity = nn.BatchNorm2d(num_features=in_channels) if out_channels == in_channels and stride == 1 else None
+            # dbb_identity
+            if out_channels == in_channels and stride == 1:
+                self.dbb_identity = nn.BatchNorm2d(num_features=in_channels) 
             
+            # dbb_1x1
             if groups < out_channels:
                 self.dbb_1x1 = conv_bn(in_channels=in_channels, out_channels=out_channels, kernel_size=1, stride=stride,
                                        padding=0, groups=groups)
@@ -120,6 +123,7 @@ class RepConv(nn.Module):
             if internal_channels_1x1_3x3 is None:
                 internal_channels_1x1_3x3 = in_channels if groups < out_channels else 2 * in_channels   # For mobilenet, it is better to have 2X internal channels
 
+            # dbb_1x1_kxk
             self.dbb_1x1_kxk = nn.Sequential()
             if internal_channels_1x1_3x3 == in_channels:
                 self.dbb_1x1_kxk.add_module('idconv1', IdentityBasedConv1x1(channels=in_channels, groups=groups))
@@ -181,7 +185,8 @@ class RepConv(nn.Module):
         for para in self.parameters():
             para.detach_()
         self.__delattr__('dbb_origin')
-        self.__delattr__('dbb_avg')
+        if hasattr(self, 'dbb_identity'):
+            self.__delattr__('dbb_identity')
         if hasattr(self, 'dbb_1x1'):
             self.__delattr__('dbb_1x1')
         self.__delattr__('dbb_1x1_kxk')
@@ -196,10 +201,10 @@ class RepConv(nn.Module):
             out += self.dbb_1x1(inputs)
 
         out += self.dbb_1x1_kxk(inputs)
-        if self.dbb_identity is None:
-            out += 0
-        else:
+
+        if hasattr(self, 'dbb_identity'):
             out += self.dbb_identity(inputs)
+
         return self.nonlinear(out)
 
 
@@ -208,6 +213,8 @@ class RepConv(nn.Module):
             torch.nn.init.constant_(self.dbb_origin.bn.weight, gamma_value)
         if hasattr(self, "dbb_1x1"):
             torch.nn.init.constant_(self.dbb_1x1.bn.weight, gamma_value)
+        if hasattr(self, "dbb_identity"):
+            torch.nn.init.constant_(self.dbb_identity.weight, gamma_value)
         if hasattr(self, "dbb_1x1_kxk"):
             torch.nn.init.constant_(self.dbb_1x1_kxk.bn2.weight, gamma_value)
 
