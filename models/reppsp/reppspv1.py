@@ -8,13 +8,13 @@ from base import BaseModel
 from utils.helpers import initialize_weights, set_trainable
 from itertools import chain
 import numpy as np
-from .repconvs.repvgg import RepConv
+from .repconvs import RepConv_dict
 
 class _PSPModule(nn.Module):
     def __init__(self, in_channels, bin_sizes, norm_layer, deploy=False, use_se=False):
+        super(_PSPModule, self).__init__()
         self.deploy = deploy
         self.use_se = use_se
-        super(_PSPModule, self).__init__()
         out_channels = in_channels // len(bin_sizes)
         self.stages = nn.ModuleList([self._make_stages(in_channels, out_channels, b_s, norm_layer) 
                                                         for b_s in bin_sizes])
@@ -43,9 +43,11 @@ class _PSPModule(nn.Module):
 
 
 class RepPSPv1(BaseModel):
-    def __init__(self, num_classes, deploy, in_channels=3, backbone='resnet152', pretrained=True, use_aux=True, 
+    def __init__(self, num_classes, deploy, repconv=None, in_channels=3, backbone='resnet152', pretrained=True, use_aux=True, 
                 freeze_bn=False, freeze_backbone=False, use_se=False):
         super(RepPSPv1, self).__init__()
+        global RepConv
+        RepConv = RepConv_dict[repconv]
         norm_layer = nn.BatchNorm2d
         model = getattr(resnet, backbone)(pretrained, norm_layer=norm_layer)
         m_out_sz = model.fc.in_features

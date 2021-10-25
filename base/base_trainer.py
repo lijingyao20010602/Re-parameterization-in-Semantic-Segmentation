@@ -17,7 +17,7 @@ def get_instance(module, name, config, *args):
     return getattr(module, config[name]['type'])(*args, **config[name]['args'])
 
 class BaseTrainer:
-    def __init__(self, model, loss, resume, config, train_loader, val_loader=None, train_logger=None, logger=None, outputdir=None):
+    def __init__(self, model, loss, resume, config, train_loader, val_loader=None, train_logger=None, outputdir=None):
         self.model = model
         self.loss = loss
         self.config = config

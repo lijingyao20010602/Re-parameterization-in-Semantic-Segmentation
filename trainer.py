@@ -11,8 +11,8 @@ from tqdm import tqdm
 
 class Trainer(BaseTrainer):
     def __init__(self, model, loss, resume, config, train_loader, val_loader=None, 
-        train_logger=None, prefetch=True, logger=None, outputdir=None):
-        super(Trainer, self).__init__(model, loss, resume, config, train_loader, val_loader, train_logger, logger, outputdir)
+        train_logger=None, prefetch=True, outputdir=None):
+        super(Trainer, self).__init__(model, loss, resume, config, train_loader, val_loader, train_logger, outputdir)
         
         self.wrt_mode, self.wrt_step = 'train_', 0
         self.log_step = config['trainer'].get('log_per_iter', int(np.sqrt(self.train_loader.batch_size)))
@@ -97,7 +97,7 @@ class Trainer(BaseTrainer):
             # PRINT INFO
             tbar.set_description('TRAIN ({}) | Loss: {:.3f} | Acc {:.2f} mIoU {:.2f} | eta {} |'.format(
                                                 epoch, self.total_loss.average, 
-                                                pixAcc, mIoU, eta))
+                                                pixAcc, mIoU*100, eta))
 
         # METRICS TO TENSORBOARD
         seg_metrics = self._get_seg_metrics()
@@ -150,7 +150,7 @@ class Trainer(BaseTrainer):
                 pixAcc, mIoU, _ = self._get_seg_metrics().values()
                 tbar.set_description('EVAL ({}) | Loss: {:.3f}, PixelAcc: {:.2f}, Mean IoU: {:.2f} |'.format( epoch,
                                                 self.total_loss.average,
-                                                pixAcc, mIoU))
+                                                pixAcc, mIoU*100))
 
             # WRTING & VISUALIZING THE MASKS
             val_img = []

@@ -47,7 +47,7 @@ def test(args, deploy, logger):
         config=args.config,
         train_loader=train_loader,
         val_loader=val_loader,
-        logger=logger,
+        outputdir=args.path.split('/')[-1],
         train_logger=Logger())
 
     trainer.test()
@@ -56,9 +56,9 @@ def test(args, deploy, logger):
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='PyTorch Training')
     parser.add_argument('-p', '--path', metavar='PATH', help='path to the weights file')
-    parser.add_argument('-a', '--arch', metavar='ARCH', default='RepPSP')
+    parser.add_argument('-a', '--arch', metavar='ARCH', default=None)
     args = parser.parse_args()
-
+    args.arch = args.arch if args.arch else args.path.split('/')[-2]
     logger = setup_logger(name='Test', output=args.path)
     config_path = os.path.join(args.path,'config.json')
     args.config = json.load(open(config_path))

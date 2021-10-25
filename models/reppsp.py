@@ -8,7 +8,8 @@ from base import BaseModel
 from utils.helpers import initialize_weights, set_trainable
 from itertools import chain
 import numpy as np
-from .repconvs import RepConv
+from .repconvs import RepConv_dict
+
 
 class _PSPModule(nn.Module):
     def __init__(self, in_channels, bin_sizes, norm_layer, deploy=False):
@@ -42,10 +43,12 @@ class _PSPModule(nn.Module):
         return output
 
 
-class RepPSPv1(BaseModel):
-    def __init__(self, num_classes, deploy, in_channels=3, backbone='resnet152', pretrained=True, use_aux=True, 
+class RepPSP(BaseModel):
+    def __init__(self, num_classes, deploy, repconv=None, in_channels=3, backbone='resnet152', pretrained=True, use_aux=True, 
                 freeze_bn=False, freeze_backbone=False):
-        super(RepPSPv1, self).__init__()
+        super(RepPSP, self).__init__()
+        global RepConv
+        RepConv = RepConv_dict[repconv]
         norm_layer = nn.BatchNorm2d
         model = getattr(resnet, backbone)(pretrained, norm_layer=norm_layer)
         m_out_sz = model.fc.in_features

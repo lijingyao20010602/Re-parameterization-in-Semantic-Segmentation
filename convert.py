@@ -14,8 +14,10 @@ def get_instance(module, name, config, *args):
 def set_args():
     parser = argparse.ArgumentParser(description='RepPSP Conversion')
     parser.add_argument('-p', '--path', metavar='PATH', help='path to the weights file')
-    parser.add_argument('-a', '--arch', metavar='ARCH', default='RepPSP')
+    parser.add_argument('-a', '--arch', metavar='ARCH', default=None)
     args = parser.parse_args()
+    
+    args.arch = args.arch if args.arch else args.path.split('/')[-2]
     args.deploy=True
 
     args.load = os.path.join(args.path,'{}-train.pth'.format(args.arch))

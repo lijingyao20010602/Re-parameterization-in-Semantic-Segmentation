@@ -29,10 +29,10 @@ def conv_bn(in_channels, out_channels, kernel_size, stride, padding, groups=1):
     return result
 
 
-class RepConv(nn.Module):
+class RepVGG(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, bias=True,
                  stride=1, padding=0, dilation=1, groups=1, padding_mode='zeros', deploy=False, use_se=False):
-        super(RepConv, self).__init__()
+        super(RepVGG, self).__init__()
         self.deploy = deploy
         self.groups = groups
         self.bias = bias

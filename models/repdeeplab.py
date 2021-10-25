@@ -7,7 +7,7 @@ import torch.utils.model_zoo as model_zoo
 from utils.helpers import initialize_weights
 from itertools import chain
 from .backbone.resnet import model_dict
-from .repconvs import RepConv
+from .repconvs import RepConv_dict
 ''' 
 -> ResNet BackBone
 '''
@@ -350,10 +350,12 @@ class Decoder(nn.Module):
 class RepDeepLab(BaseModel):
     def __init__(self, num_classes, deploy=False, in_channels=3, backbone='xception', pretrained=True, 
                 output_stride=16, freeze_bn=False, freeze_backbone=False, **_):
-                
+        super(RepDeepLab, self).__init__()
+
         self.deploy = deploy
 
-        super(RepDeepLab, self).__init__()
+
+
         assert ('xception' or 'resnet' in backbone)
         if 'resnet' in backbone:
             self.backbone = ResNet(in_channels=in_channels, output_stride=output_stride, pretrained=pretrained)

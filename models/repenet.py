@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from base import BaseModel
 from utils.helpers import initialize_weights
 from itertools import chain
-from .repconvs import RepConv
+from .repconvs import RepConv_dict
 
 class InitalBlock(nn.Module):
     def __init__(self, in_channels, use_prelu=True, deploy=False):
@@ -136,11 +136,13 @@ class BottleNeck(nn.Module):
 
 
 class RepENet(BaseModel):
-    def __init__(self, num_classes, deploy=False, in_channels=3, freeze_bn=False, **_):
+    def __init__(self, num_classes, deploy=False, repconv=None, in_channels=3, freeze_bn=False, **_):
         super(RepENet, self).__init__()
 
         self.deploy = deploy
         self.initial = InitalBlock(in_channels, deploy=self.deploy)
+        global RepConv
+        RepConv = RepConv_dict[repconv]
 
         # Stage 1
         self.bottleneck10 = BottleNeck(16, 64, downsample=True, p_drop=0.01, deploy=self.deploy)

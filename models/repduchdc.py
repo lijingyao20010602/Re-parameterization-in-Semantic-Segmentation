@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import torch.utils.model_zoo as model_zoo
 from utils.helpers import initialize_weights
 from itertools import chain
-from .repconvs import RepConv
+from .repconvs import RepConv_dict
 ''' 
 -> Dense upsampling convolution block
 '''
@@ -222,9 +222,10 @@ class Decoder(nn.Module):
 '''
 
 class RepDUCHDC(BaseModel):
-    def __init__(self, num_classes, deploy=False, in_channels=3, pretrained=True, output_stride=8, freeze_bn=False, freeze_backbone=False, **_):
+    def __init__(self, num_classes, deploy=False, repconv=None, in_channels=3, pretrained=True, output_stride=8, freeze_bn=False, freeze_backbone=False, **_):
         super(RepDUCHDC, self).__init__()
-
+        global RepConv
+        RepConv = RepConv_dict[repconv]
         self.backbone = ResNet_HDC_DUC(in_channels=in_channels, output_stride=output_stride, pretrained=pretrained)
         low_level_channels = 256
 

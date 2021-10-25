@@ -84,13 +84,13 @@ class BNAndPadLayer(nn.Module):
         return self.bn.eps
 
 
-class RepConv(nn.Module):
+class DBB3(nn.Module):
     '''Diverse Branch Block'''
     def __init__(self, in_channels, out_channels, kernel_size,
                  stride=1, padding=0, dilation=1, groups=1,
                  internal_channels_1x1_3x3=None,
                  deploy=False, nonlinear=None, single_init=False, bias=False):
-        super(RepConv, self).__init__()
+        super(DBB3, self).__init__()
         self.deploy = deploy
 
         if nonlinear is None:
@@ -98,6 +98,7 @@ class RepConv(nn.Module):
         else:
             self.nonlinear = nonlinear
 
+        self.in_channels = in_channels
         self.kernel_size = kernel_size
         self.out_channels = out_channels
         self.groups = groups

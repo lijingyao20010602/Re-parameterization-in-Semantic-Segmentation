@@ -3,11 +3,11 @@ import torch.nn.init as init
 import torch
 
 
-class RepConv(nn.Module):
+class ACB(nn.Module):
     '''ACB Block'''
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, padding_mode='zeros', deploy=False,
                  use_affine=True, reduce_gamma=False, gamma_init=None, bias=True):
-        super(RepConv, self).__init__()
+        super(ACB, self).__init__()
         self.deploy = deploy
         if deploy:
             self.fused_conv = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=(kernel_size,kernel_size), stride=stride,
