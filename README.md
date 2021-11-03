@@ -18,7 +18,7 @@
 
 <!-- /TOC -->
 
-This repo contains a PyTorch implementation of Re-parameterization in different semantic segmentation models for different datasets.
+This repo contains a PyTorch implementation of Re-parameterization indifferent semantic segmentation models for different datasets.
 
 ## Requirements
 PyTorch and Torchvision needs to be installed before running the scripts, together with `PIL` and `opencv` for data-preprocessing and `tqdm` for showing the training progress. PyTorch v1.1 is supported (using the new supported tensoboard); can work with ealier versions, but instead of using tensoboard, use tensoboardX.
@@ -76,7 +76,7 @@ In addition to the Cross-Entorpy loss, there is also
 - **Poly learning rate**, where the learning rate is scaled down linearly from the starting value down to zero during training. Considered as the go to scheduler for semantic segmentaion (see Figure below).
 - **One Cycle learning rate**, for a learning rate LR, we start from LR / 10 up to LR for 30% of the training time, and we scale down to LR / 25 for remaining time, the scaling is done in a cos annealing fashion (see Figure bellow), the momentum is also modified but in the opposite manner starting from 0.95 down to 0.85 and up to 0.95, for more detail see the paper: [Super-Convergence](https://arxiv.org/abs/1708.07120). 
 
-<p align="center"><img src="images/learning_rates.png" align="center" width="750"></p>
+
 
 ### Data augmentation
 All of the data augmentations are implemented using OpenCV in `\base\base_dataset.py`, which are: rotation (between -10 and 10 degrees), random croping between 0.5 and 2 of the selected `crop_size`, random h-flip and blurring
