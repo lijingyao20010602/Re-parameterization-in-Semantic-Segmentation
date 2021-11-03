@@ -18,7 +18,7 @@
 
 <!-- /TOC -->
 
-This repo contains a PyTorch implementation of Re-parameterization indifferent semantic segmentation models for different datasets.
+This repo contains a PyTorch implementation of Re-parameterization in semantic segmentation. The main body of different semantic segmentation models for different datasets is based on [Semantic Segmentation in PyTorch](https://github.com/yassouali/pytorch-segmentation)
 
 ## Requirements
 PyTorch and Torchvision needs to be installed before running the scripts, together with `PIL` and `opencv` for data-preprocessing and `tqdm` for showing the training progress. PyTorch v1.1 is supported (using the new supported tensoboard); can work with ealier versions, but instead of using tensoboard, use tensoboardX.
