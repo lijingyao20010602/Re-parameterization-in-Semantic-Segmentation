@@ -1,5 +1,4 @@
-# Semantic Segmentation in PyTorch
-[![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](https://opensource.org/licenses/MIT) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
+# Re-parameterization in Semantic Segmentation
 
 <!-- TOC -->
 
@@ -19,7 +18,7 @@
 
 <!-- /TOC -->
 
-This repo contains a PyTorch an implementation of different semantic segmentation models for different datasets.
+This repo contains a PyTorch implementation of Re-parameterization in different semantic segmentation models for different datasets.
 
 ## Requirements
 PyTorch and Torchvision needs to be installed before running the scripts, together with `PIL` and `opencv` for data-preprocessing and `tqdm` for showing the training progress. PyTorch v1.1 is supported (using the new supported tensoboard); can work with ealier versions, but instead of using tensoboard, use tensoboardX.
@@ -169,11 +168,12 @@ Config files are in `.json` format:
   "use_synch_bn": true,     // Using Synchronized batchnorm (for multi-GPU usage)
 
     "arch": {
-        "type": "PSPNet", // name of model architecture to train
+        "type": "PSPNet",   // name of model architecture to train
         "args": {
             "backbone": "resnet50",     // encoder type type
             "freeze_bn": false,         // When fine tuning the model this can be used
-            "freeze_backbone": false    // In this case only the decoder is trained
+            "freeze_backbone": false,   // In this case only the decoder is trained
+            "repconv": "repvgg"         // selecting the Repconv 
         }
     },
 
@@ -242,9 +242,7 @@ Config files are in `.json` format:
 }
 ```
 
-
-
 ## Acknowledgement
-- [PyTorch-Encoding](https://github.com/zhanghang1989/PyTorch-Encoding)
-- [Pytorch-Template](https://github.com/victoresque/pytorch-template/blob/master/README.m)
-- [Synchronized-BatchNorm-PyTorch](https://github.com/vacancy/Synchronized-BatchNorm-PyTorch)
+- [Semantic Segmentation in PyTorch](https://github.com/yassouali/pytorch-segmentation)
+- [RepVGG](https://github.com/DingXiaoH/RepVGG)
+- [DiverseBranchBlock](https://github.com/DingXiaoH/DiverseBranchBlock)

@@ -7,6 +7,8 @@ outputs
 datasets
 pretrained
 trained_models
+models/reppsp
+models/reppspv1.py
 
 .gitconfig
 

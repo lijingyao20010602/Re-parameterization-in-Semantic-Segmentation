@@ -1,4 +1,5 @@
-RepConv
+# Repconv
+We provides some Repconvs in this folder, the meaning of each Repconv is :
 repvgg: 1x1 + 3x3 + identity
 ddb:    k_origin + k_1x1 + k_1x1_kxk_merged + k_1x1_avg_merged
 ddb2:   k_origin + k_1x1 + k_1x1_kxk_merged
